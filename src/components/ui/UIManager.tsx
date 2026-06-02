@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../systems/gameStore';
 
 const formatTime = (time: number) => {
@@ -9,28 +9,50 @@ const formatTime = (time: number) => {
 };
 
 export const UIManager = () => {
-  const {
-    started,
-    level,
-    maxLevels,
-    time,
-    stamina,
-    maxStamina,
-    exhaustedTime,
-    transitionTime,
-    cameraSensitivity,
-    checkpointsHit,
-    totalCheckpoints,
-    falls,
-    maxFalls,
-    win,
-    lose,
-    start,
-    restart,
-    setCameraSensitivity,
-  } = useGameStore();
+  const started = useGameStore((state) => state.started);
+  const level = useGameStore((state) => state.level);
+  const maxLevels = useGameStore((state) => state.maxLevels);
+  const time = useGameStore((state) => Math.floor(state.time));
+  const stamina = useGameStore((state) => state.stamina);
+  const maxStamina = useGameStore((state) => state.maxStamina);
+  const exhaustedTime = useGameStore((state) => state.exhaustedTime);
+  const transitionTime = useGameStore((state) => state.transitionTime);
+  const cameraSensitivity = useGameStore((state) => state.cameraSensitivity);
+  const soundVolume = useGameStore((state) => state.soundVolume);
+  const checkpointsHit = useGameStore((state) => state.checkpointsHit);
+  const totalCheckpoints = useGameStore((state) => state.totalCheckpoints);
+  const falls = useGameStore((state) => state.falls);
+  const maxFalls = useGameStore((state) => state.maxFalls);
+  const win = useGameStore((state) => state.win);
+  const lose = useGameStore((state) => state.lose);
+  const instructionOpen = useGameStore((state) => state.instructionOpen);
+  const start = useGameStore((state) => state.start);
+  const restart = useGameStore((state) => state.restart);
+  const setPaused = useGameStore((state) => state.setPaused);
+  const setInstructionOpen = useGameStore((state) => state.setInstructionOpen);
+  const setCameraSensitivity = useGameStore((state) => state.setCameraSensitivity);
+  const setSoundVolume = useGameStore((state) => state.setSoundVolume);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const staminaPercent = useMemo(() => (stamina / maxStamina) * 100, [stamina, maxStamina]);
+
+  useEffect(() => {
+    setPaused((settingsOpen || instructionOpen) && started);
+    if ((settingsOpen || instructionOpen) && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  }, [instructionOpen, setPaused, settingsOpen, started]);
+
+  useEffect(() => {
+    if (!settingsOpen && !instructionOpen) return;
+    const closePanel = (event: KeyboardEvent) => {
+      if (event.code !== 'Escape') return;
+      setSettingsOpen(false);
+      setInstructionOpen(false);
+    };
+    window.addEventListener('keydown', closePanel);
+    return () => window.removeEventListener('keydown', closePanel);
+  }, [instructionOpen, setInstructionOpen, settingsOpen]);
 
   return (
     <div className="hud">
@@ -79,34 +101,77 @@ export const UIManager = () => {
         </div>
       </div>
 
-      <div className="camera-settings">
-        <label htmlFor="camera-sensitivity">Mouse</label>
-        <input
-          id="camera-sensitivity"
-          min="0.2"
-          max="1.35"
-          step="0.05"
-          type="range"
-          value={cameraSensitivity}
-          onChange={(event) => setCameraSensitivity(Number(event.target.value))}
-        />
+      <div className="settings-anchor">
+        <button
+          aria-expanded={settingsOpen}
+          className="btn ghost settings-toggle"
+          type="button"
+          onClick={() => setSettingsOpen((open) => !open)}
+        >
+          Settings
+        </button>
+        {settingsOpen && (
+          <div aria-label="Game settings" className="settings-panel" role="dialog">
+            <div className="settings-title">Game Settings</div>
+            <label className="settings-control" htmlFor="camera-sensitivity">
+              <span>Mouse sensitivity <output>{cameraSensitivity.toFixed(2)}</output></span>
+              <input
+                id="camera-sensitivity"
+                min="0.2"
+                max="1.35"
+                step="0.05"
+                type="range"
+                value={cameraSensitivity}
+                onChange={(event) => setCameraSensitivity(Number(event.target.value))}
+              />
+            </label>
+            <label className="settings-control" htmlFor="sound-volume">
+              <span>Sound volume <output>{Math.round(soundVolume * 100)}%</output></span>
+              <input
+                id="sound-volume"
+                min="0"
+                max="1"
+                step="0.05"
+                type="range"
+                value={soundVolume}
+                onChange={(event) => setSoundVolume(Number(event.target.value))}
+              />
+            </label>
+            <div className="settings-help">
+              {started ? 'Game paused while settings are open. ' : ''}
+              Click the game to capture the mouse again. Use the wheel to zoom.
+            </div>
+          </div>
+        )}
       </div>
 
       {started && <div className="mouse-hint">Click the game, then move the mouse to look around</div>}
+
+      {instructionOpen && (
+        <div className="instruction-overlay">
+          <div aria-label="How to play" className="instruction-card" role="dialog">
+            <div className="instruction-kicker">Mountain Trail Notice</div>
+            <div className="title">How To Play</div>
+            <div className="subtitle">Read this before starting the climb. Traps may be hidden in ordinary-looking ground.</div>
+            <div className="tutorial-grid instruction-grid">
+              <span><b>WASD</b> Move</span>
+              <span><b>Mouse</b> Look around</span>
+              <span><b>Space</b> Jump</span>
+              <span><b>Shift</b> Sprint</span>
+              <span><b>Wheel</b> Zoom camera</span>
+              <span><b>Esc</b> Release mouse</span>
+            </div>
+            <div className="instruction-note">Reach each checkpoint. Watch the path carefully: rocks, trees and floors can turn into traps after you step forward.</div>
+            <button className="btn" type="button" onClick={() => setInstructionOpen(false)}>Close Guide</button>
+          </div>
+        </div>
+      )}
 
       {!started && !win && !lose && (
         <div className="tutorial">
           <div className="tutorial-card">
             <div className="title">Mountain Climber</div>
-            <div className="subtitle">Reach the summit, avoid hidden traps and use checkpoints.</div>
-            <div className="tutorial-grid">
-              <span><b>WASD</b> Move</span>
-              <span><b>Mouse</b> Look</span>
-              <span><b>Space</b> Jump</span>
-              <span><b>Shift</b> Sprint</span>
-              <span><b>Wheel</b> Zoom</span>
-              <span><b>Esc</b> Release mouse</span>
-            </div>
+            <div className="subtitle">Reach the summit. A wooden guide board is waiting near the village entrance.</div>
             <button className="btn" type="button" onClick={start}>Start Climbing</button>
           </div>
         </div>

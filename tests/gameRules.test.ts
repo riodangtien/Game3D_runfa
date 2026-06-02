@@ -57,32 +57,85 @@ test('checkpoint routes climb steadily without impossible height jumps', () => {
 
 test('levels provide a substantial climb before the summit', () => {
   assert.ok(LEVELS[1].checkpoints.length >= 7);
-  assert.ok(LEVELS[2].checkpoints.length >= 8);
+  assert.ok(LEVELS[2].checkpoints.length >= 6);
   assert.ok(LEVELS[1].goal[2] >= 60);
   assert.ok(LEVELS[2].goal[2] >= 59);
 });
 
-test('hazards do not overlap checkpoint centers', () => {
+test('terraces rise from ground without floating support blocks', () => {
   for (const level of Object.values(LEVELS)) {
-    for (const hazard of level.hazards) {
-      for (const checkpoint of level.checkpoints) {
-        const dx = hazard.position[0] - checkpoint.position[0];
-        const dz = hazard.position[2] - checkpoint.position[2];
-        assert.ok(Math.hypot(dx, dz) > 1, 'hazard should leave checkpoint a safe landing area');
-      }
+    for (const block of level.gameplay.blocks.slice(1)) {
+      assert.ok(Math.abs(block.position[1] - block.size[1] / 2) < 0.01, 'raised terrace should meet the ground');
     }
   }
 });
 
-test('levels contain enough varied traps to reward careful observation', () => {
-  assert.ok(LEVELS[1].hazards.length >= 12);
-  assert.ok(LEVELS[2].hazards.length >= 12);
-  assert.ok(LEVELS[1].hazards.some((hazard) => hazard.cycleSpeed !== undefined));
-  assert.ok(LEVELS[2].hazards.some((hazard) => hazard.cycleSpeed !== undefined));
+test('level one islands leave visible gaps within jumping distance', () => {
+  const blocks = LEVELS[1].gameplay.blocks.slice(1);
+  for (let index = 1; index < blocks.length; index += 1) {
+    const previous = blocks[index - 1];
+    const current = blocks[index];
+    const gap = current.position[2] - current.size[2] / 2 - (previous.position[2] + previous.size[2] / 2);
+    assert.ok(gap >= 2, 'neighboring islands should be visibly separated');
+    assert.ok(gap <= 3.5, 'neighboring islands should remain within jumping distance');
+  }
+});
+
+test('level two crosses wide glacier gaps using moving ice rafts', () => {
+  const blocks = LEVELS[2].gameplay.blocks.slice(1);
+  for (let index = 1; index < blocks.length; index += 1) {
+    const previous = blocks[index - 1];
+    const current = blocks[index];
+    const gap = current.position[2] - current.size[2] / 2 - (previous.position[2] + previous.size[2] / 2);
+    assert.ok(gap >= 9, 'glacier ledges should require moving rafts instead of direct jumps');
+  }
+  assert.equal(LEVELS[2].gameplay.iceRafts?.length, blocks.length - 1);
+});
+
+test('bait trap floors sit in gaps instead of overlapping safe terraces', () => {
+  for (const level of Object.values(LEVELS)) {
+    for (const floor of level.gameplay.trapFloors) {
+      const overlapsSafeTerrace = level.gameplay.blocks.slice(1).some((block) => {
+        const overlapsX = Math.abs(floor.position[0] - block.position[0]) < (floor.size[0] + block.size[0]) / 2;
+        const overlapsZ = Math.abs(floor.position[2] - block.position[2]) < (floor.size[2] + block.size[2]) / 2;
+        return overlapsX && overlapsZ;
+      });
+      assert.equal(overlapsSafeTerrace, false, 'bait trap floor should fall into an open gap');
+    }
+  }
 });
 
 test('each level exposes distinct traversal mechanics', () => {
-  assert.ok(LEVELS[1].gameplay.bridges.length > 0);
+  assert.ok(LEVELS[1].gameplay.trapFloors.length > 0);
+  assert.ok(LEVELS[1].gameplay.ambushDrops.some((ambush) => ambush.kind === 'tree'));
+  assert.ok(LEVELS[1].gameplay.ambushDrops.some((ambush) => ambush.kind === 'crate'));
+  assert.ok(LEVELS[1].gameplay.chestTraps.length > 0);
+  assert.ok(LEVELS[2].gameplay.ambushDrops.every((ambush) => ambush.kind === 'rock'));
   assert.ok((LEVELS[2].gameplay.icePatches?.length ?? 0) > 0);
-  assert.ok((LEVELS[2].gameplay.movingPlatforms?.length ?? 0) > 0);
+  assert.ok((LEVELS[2].gameplay.iceRafts?.length ?? 0) > 0);
+  assert.ok((LEVELS[2].gameplay.windZones?.length ?? 0) > 0);
+});
+
+test('ambush objects land below their hidden spawn and roll after impact', () => {
+  for (const level of Object.values(LEVELS)) {
+    for (const ambush of level.gameplay.ambushDrops) {
+      assert.ok(ambush.restPosition[1] < ambush.dropPosition[1], 'ambush object should land below its hidden spawn');
+      assert.ok(
+        Math.hypot(ambush.rollDirection[0], ambush.rollDirection[2]) > 0,
+        'ambush object should roll sideways after landing'
+      );
+    }
+  }
+});
+
+test('difficulty curve keeps dense mixed trap layouts', () => {
+  assert.ok(LEVELS[1].gameplay.ambushDrops.length >= 6);
+  assert.ok(LEVELS[1].gameplay.trapFloors.length >= 4);
+  assert.ok(LEVELS[1].gameplay.snareTraps.length >= 3);
+  assert.ok(LEVELS[1].gameplay.chestTraps.length >= 2);
+
+  assert.ok(LEVELS[2].gameplay.ambushDrops.length >= 4);
+  assert.ok((LEVELS[2].gameplay.icePatches?.length ?? 0) >= 5);
+  assert.ok((LEVELS[2].gameplay.iceRafts?.length ?? 0) >= 5);
+  assert.ok((LEVELS[2].gameplay.windZones?.length ?? 0) >= 3);
 });

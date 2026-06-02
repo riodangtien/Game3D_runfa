@@ -129,24 +129,64 @@ canvas {
   color: rgba(248, 250, 252, 0.85);
 }
 
-.camera-settings {
+.settings-anchor {
   position: absolute;
   right: 20px;
   top: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.56);
-  color: rgba(248, 250, 252, 0.82);
-  font-size: 12px;
   pointer-events: auto;
 }
 
-.camera-settings input {
-  width: 94px;
+.settings-toggle {
+  display: block;
+  margin-left: auto;
+  padding: 9px 15px;
+}
+
+.settings-panel {
+  width: min(310px, calc(100vw - 40px));
+  margin-top: 10px;
+  padding: 16px;
+  border: 1px solid rgba(248, 250, 252, 0.16);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.88);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(10px);
+}
+
+.settings-title {
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.settings-control {
+  display: grid;
+  gap: 7px;
+  margin-top: 13px;
+  color: rgba(248, 250, 252, 0.82);
+  font-size: 12px;
+}
+
+.settings-control span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-control output {
+  color: #fdba74;
+}
+
+.settings-control input[type='range'] {
+  width: 100%;
   accent-color: var(--accent);
+}
+
+.settings-help {
+  margin-top: 14px;
+  color: rgba(248, 250, 252, 0.56);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .btn {
@@ -178,6 +218,7 @@ canvas {
 }
 
 .tutorial,
+.instruction-overlay,
 .level-transition {
   position: absolute;
   inset: 0;
@@ -186,6 +227,58 @@ canvas {
   justify-content: center;
   background: rgba(15, 23, 42, 0.46);
   pointer-events: auto;
+}
+
+.instruction-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.58);
+  pointer-events: auto;
+}
+
+.instruction-card {
+  width: min(580px, calc(100vw - 32px));
+  padding: 28px;
+  border: 8px solid #6b4328;
+  border-radius: 10px;
+  color: #422d20;
+  background: #e1c58e;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.42), inset 0 0 0 2px rgba(255, 245, 210, 0.46);
+  text-align: center;
+}
+
+.instruction-card .subtitle {
+  color: rgba(66, 45, 32, 0.74);
+}
+
+.instruction-kicker {
+  margin-bottom: 8px;
+  color: #8b5a36;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.instruction-grid {
+  color: rgba(66, 45, 32, 0.9);
+  text-align: left;
+}
+
+.instruction-note {
+  margin: 4px 0 20px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(139, 90, 54, 0.12);
+  color: rgba(66, 45, 32, 0.82);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
 }
 
 .tutorial-card {

@@ -15,6 +15,8 @@ const MAX_MOUSE_DELTA_X = 40;
 const MAX_MOUSE_DELTA_Y = 30;
 const CAMERA_ROTATION_SMOOTHING = 8;
 const CAMERA_POSITION_SMOOTHING = 9;
+const CAMERA_COLLISION_IN_SMOOTHING = 18;
+const CAMERA_COLLISION_OUT_SMOOTHING = 5;
 
 export const CameraController = ({ target }: CameraControllerProps) => {
   const started = useGameStore((state) => state.started);
@@ -28,6 +30,7 @@ export const CameraController = ({ target }: CameraControllerProps) => {
   const lookAt = useRef(new THREE.Vector3());
   const cameraDirection = useRef(new THREE.Vector3());
   const zoom = useRef(8);
+  const collisionDistance = useRef(8);
 
   useEffect(() => {
     const handleCanvasClick = (event: MouseEvent) => {
@@ -89,18 +92,22 @@ export const CameraController = ({ target }: CameraControllerProps) => {
       new rapier.Ray(lookAt.current, cameraDirection.current),
       distance,
       true,
-      undefined,
+      rapier.QueryFilterFlags.EXCLUDE_SENSORS,
       undefined,
       undefined,
       target.current
     );
 
-    if (cameraHit) {
-      desiredPosition.current.copy(lookAt.current).addScaledVector(
-        cameraDirection.current,
-        Math.max(1.8, cameraHit.timeOfImpact - 0.3)
-      );
-    }
+    const clearDistance = cameraHit ? Math.max(1.8, cameraHit.timeOfImpact - 0.3) : distance;
+    const collisionSmoothing = clearDistance < collisionDistance.current
+      ? CAMERA_COLLISION_IN_SMOOTHING
+      : CAMERA_COLLISION_OUT_SMOOTHING;
+    collisionDistance.current = THREE.MathUtils.lerp(
+      collisionDistance.current,
+      clearDistance,
+      1 - Math.exp(-collisionSmoothing * dt)
+    );
+    desiredPosition.current.copy(lookAt.current).addScaledVector(cameraDirection.current, collisionDistance.current);
 
     state.camera.position.lerp(desiredPosition.current, 1 - Math.exp(-CAMERA_POSITION_SMOOTHING * dt));
     state.camera.lookAt(lookAt.current);

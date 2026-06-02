@@ -14,7 +14,6 @@ import { RapierRigidBody } from '@react-three/rapier';
 const MOVE_SPEED = 5.5;
 const SPRINT_MULT = 1.48;
 const JUMP_FORCE = 9.6;
-const CLIMB_SPEED = 3.2;
 const STAMINA_DRAIN = 16;
 const STAMINA_REGEN = 12;
 const GROUND_ACCELERATION = 13;
@@ -44,16 +43,18 @@ export const PlayerController = () => {
   const [animState, setAnimState] = useState<AnimState>('idle');
 
   const started = useGameStore((state) => state.started);
+  const paused = useGameStore((state) => state.paused);
   const win = useGameStore((state) => state.win);
   const lose = useGameStore((state) => state.lose);
   const stamina = useGameStore((state) => state.stamina);
   const exhaustedTime = useGameStore((state) => state.exhaustedTime);
-  const inClimbZone = useGameStore((state) => state.inClimbZone);
   const slippery = useGameStore((state) => state.slippery);
+  const wind = useGameStore((state) => state.wind);
   const addFall = useGameStore((state) => state.addFall);
   const lastCheckpoint = useGameStore((state) => state.lastCheckpoint);
   const teleportVersion = useGameStore((state) => state.teleportVersion);
   const transitionTime = useGameStore((state) => state.transitionTime);
+  const respawnTime = useGameStore((state) => state.respawnTime);
   const emitSound = useGameStore((state) => state.emitSound);
   const hitVersion = useGameStore((state) => state.hitVersion);
 
@@ -69,6 +70,21 @@ export const PlayerController = () => {
 
   useFrame((state, dt) => {
     if (!bodyRef.current) return;
+
+    if (paused) {
+      bodyRef.current.setGravityScale(0, true);
+      bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      return;
+    }
+
+    if (respawnTime > 0) {
+      bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      if (animStateRef.current !== 'hit') {
+        animStateRef.current = 'hit';
+        setAnimState('hit');
+      }
+      return;
+    }
 
     if (!started || win || lose || transitionTime > 0) {
       bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -111,7 +127,7 @@ export const PlayerController = () => {
           new rapier.Ray(position, { x: 0, y: -1, z: 0 }),
           1.25,
           true,
-          undefined,
+          rapier.QueryFilterFlags.EXCLUDE_SENSORS,
           undefined,
           undefined,
           bodyRef.current
@@ -128,48 +144,41 @@ export const PlayerController = () => {
     }
     wasGrounded.current = grounded;
 
-    const canClimb = inClimbZone && input.forward && stamina > 0 && exhaustedTime <= 0;
-    if (canClimb) {
-      bodyRef.current.setGravityScale(0, true);
-      bodyRef.current.setLinvel({ x: 0, y: CLIMB_SPEED, z: 0 }, true);
-      applyStaminaDelta(-STAMINA_DRAIN * dt);
-    } else {
-      bodyRef.current.setGravityScale(1, true);
-      const acceleration = slippery
-        ? ICE_ACCELERATION
-        : grounded
-          ? moveLength > 0
-            ? GROUND_ACCELERATION
-            : GROUND_BRAKING
-          : AIR_ACCELERATION;
-      const traction = 1 - Math.exp(-acceleration * dt);
-      const targetVelocityX = !grounded && moveLength === 0 ? currentVelocity.x : move.x * speed;
-      const targetVelocityZ = !grounded && moveLength === 0 ? currentVelocity.z : move.z * speed;
+    bodyRef.current.setGravityScale(1, true);
+    const acceleration = slippery
+      ? ICE_ACCELERATION
+      : grounded
+        ? moveLength > 0
+          ? GROUND_ACCELERATION
+          : GROUND_BRAKING
+        : AIR_ACCELERATION;
+    const traction = 1 - Math.exp(-acceleration * dt);
+    const targetVelocityX = (!grounded && moveLength === 0 ? currentVelocity.x : move.x * speed) + wind.x;
+    const targetVelocityZ = (!grounded && moveLength === 0 ? currentVelocity.z : move.z * speed) + wind.z;
+    bodyRef.current.setLinvel({
+      x: THREE.MathUtils.lerp(currentVelocity.x, targetVelocityX, traction),
+      y: currentVelocity.y,
+      z: THREE.MathUtils.lerp(currentVelocity.z, targetVelocityZ, traction),
+    }, true);
+
+    if (!input.jump) {
+      jumpConsumed.current = false;
+    }
+
+    if (input.jump && grounded && !jumpConsumed.current) {
+      jumpConsumed.current = true;
+      emitSound('jump');
       bodyRef.current.setLinvel({
-        x: THREE.MathUtils.lerp(currentVelocity.x, targetVelocityX, traction),
-        y: currentVelocity.y,
-        z: THREE.MathUtils.lerp(currentVelocity.z, targetVelocityZ, traction),
+        x: moveLength > 0 ? THREE.MathUtils.lerp(currentVelocity.x, move.x * speed, 0.72) : currentVelocity.x,
+        y: JUMP_FORCE,
+        z: moveLength > 0 ? THREE.MathUtils.lerp(currentVelocity.z, move.z * speed, 0.72) : currentVelocity.z,
       }, true);
+    }
 
-      if (!input.jump) {
-        jumpConsumed.current = false;
-      }
-
-      if (input.jump && grounded && !jumpConsumed.current) {
-        jumpConsumed.current = true;
-        emitSound('jump');
-        bodyRef.current.setLinvel({
-          x: moveLength > 0 ? THREE.MathUtils.lerp(currentVelocity.x, move.x * speed, 0.72) : currentVelocity.x,
-          y: JUMP_FORCE,
-          z: moveLength > 0 ? THREE.MathUtils.lerp(currentVelocity.z, move.z * speed, 0.72) : currentVelocity.z,
-        }, true);
-      }
-
-      if (sprinting) {
-        applyStaminaDelta(-STAMINA_DRAIN * dt);
-      } else if (moveLength === 0 || !input.sprint) {
-        applyStaminaDelta(STAMINA_REGEN * dt);
-      }
+    if (sprinting) {
+      applyStaminaDelta(-STAMINA_DRAIN * dt);
+    } else if (moveLength === 0 || !input.sprint) {
+      applyStaminaDelta(STAMINA_REGEN * dt);
     }
 
     if (position.y < -6) {
@@ -183,8 +192,6 @@ export const PlayerController = () => {
       nextState = 'hit';
     } else if (landTimer.current > 0) {
       nextState = 'land';
-    } else if (canClimb) {
-      nextState = 'climb';
     } else if (!grounded && currentVelocity.y > 0.4) {
       nextState = 'jump';
     } else if (!grounded && currentVelocity.y < -0.6) {

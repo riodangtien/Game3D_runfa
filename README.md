@@ -1,4 +1,25 @@
-# React + TypeScript + Vite
+# Mountain Climber 3D
+
+Play the published game: [Game3D Runfa](https://riodangtien.github.io/Game3D_runfa/)
+
+Local development:
+
+```bash
+npm install
+npm run dev
+```
+
+Production check:
+
+```bash
+npm run lint
+npm run test:gameplay
+npm run build
+```
+
+The `main` branch is deployed to GitHub Pages through `.github/workflows/deploy-pages.yml`.
+
+## Vite Notes
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

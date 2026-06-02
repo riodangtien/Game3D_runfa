@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 
+const INITIAL_MOVEMENT = {
+  forward: false,
+  backward: false,
+  left: false,
+  right: false,
+  jump: false,
+  sprint: false,
+};
+
 export const usePlayerControls = () => {
-  const [movement, setMovement] = useState({
-    forward: false,
-    backward: false,
-    left: false,
-    right: false,
-    jump: false,
-    sprint: false,
-  });
+  const [movement, setMovement] = useState(INITIAL_MOVEMENT);
 
   useEffect(() => {
     const shouldBlock = (code: string) =>
@@ -26,33 +28,38 @@ export const usePlayerControls = () => {
         'ShiftRight',
       ].includes(code);
 
+    const setControl = (key: keyof typeof INITIAL_MOVEMENT, value: boolean) => {
+      setMovement((current) => current[key] === value ? current : { ...current, [key]: value });
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (shouldBlock(e.code)) {
         e.preventDefault();
       }
+      if (e.repeat) return;
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':
-          setMovement((m) => ({ ...m, forward: true }));
+          setControl('forward', true);
           break;
         case 'KeyS':
         case 'ArrowDown':
-          setMovement((m) => ({ ...m, backward: true }));
+          setControl('backward', true);
           break;
         case 'KeyA':
         case 'ArrowLeft':
-          setMovement((m) => ({ ...m, left: true }));
+          setControl('left', true);
           break;
         case 'KeyD':
         case 'ArrowRight':
-          setMovement((m) => ({ ...m, right: true }));
+          setControl('right', true);
           break;
         case 'Space':
-          setMovement((m) => ({ ...m, jump: true }));
+          setControl('jump', true);
           break;
         case 'ShiftLeft':
         case 'ShiftRight':
-          setMovement((m) => ({ ...m, sprint: true }));
+          setControl('sprint', true);
           break;
       }
     };
@@ -64,36 +71,39 @@ export const usePlayerControls = () => {
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':
-          setMovement((m) => ({ ...m, forward: false }));
+          setControl('forward', false);
           break;
         case 'KeyS':
         case 'ArrowDown':
-          setMovement((m) => ({ ...m, backward: false }));
+          setControl('backward', false);
           break;
         case 'KeyA':
         case 'ArrowLeft':
-          setMovement((m) => ({ ...m, left: false }));
+          setControl('left', false);
           break;
         case 'KeyD':
         case 'ArrowRight':
-          setMovement((m) => ({ ...m, right: false }));
+          setControl('right', false);
           break;
         case 'Space':
-          setMovement((m) => ({ ...m, jump: false }));
+          setControl('jump', false);
           break;
         case 'ShiftLeft':
         case 'ShiftRight':
-          setMovement((m) => ({ ...m, sprint: false }));
+          setControl('sprint', false);
           break;
       }
     };
+    const handleBlur = () => setMovement(INITIAL_MOVEMENT);
 
     window.addEventListener('keydown', handleKeyDown, { passive: false });
     window.addEventListener('keyup', handleKeyUp, { passive: false });
+    window.addEventListener('blur', handleBlur);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
     };
   }, []);
 

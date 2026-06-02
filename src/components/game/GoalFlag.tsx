@@ -10,17 +10,25 @@ export const GoalFlag = ({ position }: GoalFlagProps) => {
 
   return (
     <RigidBody type="fixed" colliders={false} position={position}>
-      <mesh position={[0, 1.4, 0]}>
-        <cylinderGeometry args={[0.07, 0.1, 2.8, 10]} />
-        <meshStandardMaterial color="#e2e8f0" metalness={0.3} roughness={0.5} />
+      <mesh position={[0, 1.3, 0]} castShadow>
+        <cylinderGeometry args={[0.08, 0.12, 2.6, 8]} />
+        <meshStandardMaterial color="#68462e" roughness={1} />
       </mesh>
-      <mesh position={[0.7, 2.28, 0]}>
-        <planeGeometry args={[1.4, 0.72]} />
-        <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.35} side={2} />
+      <mesh position={[0.65, 2.16, 0]} rotation={[0, -0.08, -0.06]}>
+        <planeGeometry args={[1.3, 0.7]} />
+        <meshStandardMaterial color="#bd5d34" emissive="#8f3e28" emissiveIntensity={0.22} side={2} />
       </mesh>
-      <mesh position={[0, 0.06, 0]}>
-        <cylinderGeometry args={[0.65, 0.8, 0.14, 16]} />
-        <meshStandardMaterial color="#8b6f47" roughness={1} />
+      <mesh position={[0, 0.16, 0]} castShadow>
+        <cylinderGeometry args={[0.76, 0.96, 0.32, 7]} />
+        <meshStandardMaterial color="#566158" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.92, 0]} castShadow>
+        <cylinderGeometry args={[0.34, 0.5, 1.2, 7]} />
+        <meshStandardMaterial color="#647067" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.96, 0.35]} rotation={[0, 0, Math.PI / 4]}>
+        <planeGeometry args={[0.4, 0.4]} />
+        <meshStandardMaterial color="#ffd27a" emissive="#f97316" emissiveIntensity={2} side={2} />
       </mesh>
       <CuboidCollider
         args={[1, 2, 1]}

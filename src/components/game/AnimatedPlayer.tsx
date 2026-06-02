@@ -8,6 +8,8 @@ type AnimatedPlayerProps = {
   state: AnimState;
 };
 
+const playerModelUrl = `${import.meta.env.BASE_URL}models/RobotExpressive.glb`;
+
 const clipByState: Record<AnimState, string> = {
   idle: 'Idle',
   walk: 'Walking',
@@ -17,11 +19,11 @@ const clipByState: Record<AnimState, string> = {
   // RobotExpressive has no climb clip. Keep this mapping isolated for an art swap.
   climb: 'WalkJump',
   land: 'Standing',
-  hit: 'Punch',
+  hit: 'Death',
 };
 
 export const AnimatedPlayer = forwardRef<THREE.Group, AnimatedPlayerProps>(({ state }, ref) => {
-  const { scene, animations } = useGLTF('/models/RobotExpressive.glb');
+  const { scene, animations } = useGLTF(playerModelUrl);
   const instance = useMemo(() => clone(scene), [scene]);
   const { actions } = useAnimations(animations, instance);
 
@@ -37,6 +39,8 @@ export const AnimatedPlayer = forwardRef<THREE.Group, AnimatedPlayerProps>(({ st
   useEffect(() => {
     const action = actions[clipByState[state]];
     if (!action) return;
+    action.clampWhenFinished = state === 'hit';
+    action.setLoop(state === 'hit' ? THREE.LoopOnce : THREE.LoopRepeat, state === 'hit' ? 1 : Infinity);
     action.reset().fadeIn(0.16).play();
     return () => {
       action.fadeOut(0.14);
@@ -50,4 +54,4 @@ export const AnimatedPlayer = forwardRef<THREE.Group, AnimatedPlayerProps>(({ st
   );
 });
 
-useGLTF.preload('/models/RobotExpressive.glb');
+useGLTF.preload(playerModelUrl);
