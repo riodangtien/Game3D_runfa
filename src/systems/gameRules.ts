@@ -2,7 +2,6 @@ export type ProgressState = {
   level: number;
   maxLevels: number;
   falls: number;
-  maxFalls: number;
   teleportVersion: number;
   started: boolean;
 };
@@ -11,8 +10,8 @@ export const applyHazardHit = (state: ProgressState) => {
   const falls = state.falls + 1;
   return {
     falls,
-    lose: falls >= state.maxFalls,
-    started: falls >= state.maxFalls ? false : state.started,
+    lose: false,
+    started: state.started,
     teleportVersion: state.teleportVersion + 1,
   };
 };

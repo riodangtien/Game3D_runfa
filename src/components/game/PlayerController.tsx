@@ -36,7 +36,8 @@ export const PlayerController = () => {
     up: new THREE.Vector3(0, 1, 0),
   });
   const animStateRef = useRef<AnimState>('idle');
-  const jumpConsumed = useRef(false);
+  const jumpPressedLast = useRef(false);
+  const groundedTime = useRef(0);
   const wasGrounded = useRef(true);
   const landTimer = useRef(0);
   const hitTimer = useRef(0);
@@ -50,6 +51,7 @@ export const PlayerController = () => {
   const exhaustedTime = useGameStore((state) => state.exhaustedTime);
   const slippery = useGameStore((state) => state.slippery);
   const wind = useGameStore((state) => state.wind);
+  const platformVelocity = useGameStore((state) => state.platformVelocity);
   const addFall = useGameStore((state) => state.addFall);
   const lastCheckpoint = useGameStore((state) => state.lastCheckpoint);
   const teleportVersion = useGameStore((state) => state.teleportVersion);
@@ -136,6 +138,8 @@ export const PlayerController = () => {
     const grounded = groundRay
       ? groundRay.collider && Math.abs(groundRay.timeOfImpact) <= 1.2
       : position.y <= 2.2;
+    const canJump = Boolean(grounded && groundedTime.current >= 0.06 && currentVelocity.y <= 0.15);
+    groundedTime.current = grounded ? groundedTime.current + dt : 0;
     landTimer.current = Math.max(0, landTimer.current - dt);
     hitTimer.current = Math.max(0, hitTimer.current - dt);
     if (!wasGrounded.current && grounded && currentVelocity.y < -1.1) {
@@ -153,20 +157,23 @@ export const PlayerController = () => {
           : GROUND_BRAKING
         : AIR_ACCELERATION;
     const traction = 1 - Math.exp(-acceleration * dt);
-    const targetVelocityX = (!grounded && moveLength === 0 ? currentVelocity.x : move.x * speed) + wind.x;
-    const targetVelocityZ = (!grounded && moveLength === 0 ? currentVelocity.z : move.z * speed) + wind.z;
+    const carriedVelocityX = grounded ? platformVelocity.x : 0;
+    const carriedVelocityZ = grounded ? platformVelocity.z : 0;
+    const targetVelocityX =
+      (!grounded && moveLength === 0 ? currentVelocity.x : move.x * speed) + wind.x + carriedVelocityX;
+    const targetVelocityZ =
+      (!grounded && moveLength === 0 ? currentVelocity.z : move.z * speed) + wind.z + carriedVelocityZ;
     bodyRef.current.setLinvel({
       x: THREE.MathUtils.lerp(currentVelocity.x, targetVelocityX, traction),
       y: currentVelocity.y,
       z: THREE.MathUtils.lerp(currentVelocity.z, targetVelocityZ, traction),
     }, true);
 
-    if (!input.jump) {
-      jumpConsumed.current = false;
-    }
+    const jumpJustPressed = input.jump && !jumpPressedLast.current;
+    jumpPressedLast.current = input.jump;
 
-    if (input.jump && grounded && !jumpConsumed.current) {
-      jumpConsumed.current = true;
+    if (jumpJustPressed && canJump) {
+      groundedTime.current = 0;
       emitSound('jump');
       bodyRef.current.setLinvel({
         x: moveLength > 0 ? THREE.MathUtils.lerp(currentVelocity.x, move.x * speed, 0.72) : currentVelocity.x,

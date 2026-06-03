@@ -22,7 +22,6 @@ export const UIManager = () => {
   const checkpointsHit = useGameStore((state) => state.checkpointsHit);
   const totalCheckpoints = useGameStore((state) => state.totalCheckpoints);
   const falls = useGameStore((state) => state.falls);
-  const maxFalls = useGameStore((state) => state.maxFalls);
   const win = useGameStore((state) => state.win);
   const lose = useGameStore((state) => state.lose);
   const instructionOpen = useGameStore((state) => state.instructionOpen);
@@ -75,9 +74,7 @@ export const UIManager = () => {
         </div>
         <div className="panel">
           <div className="label">Falls</div>
-          <div className="value">
-            {falls}/{maxFalls}
-          </div>
+          <div className="value">{falls}</div>
         </div>
       </div>
 
@@ -114,11 +111,11 @@ export const UIManager = () => {
           <div aria-label="Game settings" className="settings-panel" role="dialog">
             <div className="settings-title">Game Settings</div>
             <label className="settings-control" htmlFor="camera-sensitivity">
-              <span>Mouse sensitivity <output>{cameraSensitivity.toFixed(2)}</output></span>
+              <span>Mouse look speed <output>{cameraSensitivity.toFixed(2)}</output></span>
               <input
                 id="camera-sensitivity"
-                min="0.2"
-                max="1.35"
+                min="0.35"
+                max="2.4"
                 step="0.05"
                 type="range"
                 value={cameraSensitivity}
@@ -179,8 +176,8 @@ export const UIManager = () => {
 
       {transitionTime > 0 && (
         <div className="level-transition">
-          <div className="transition-title">Entering the Frozen Ridge</div>
-          <div className="subtitle">The ice changes how you move.</div>
+          <div className="transition-title">Frozen Ridge Ahead</div>
+          <div className="subtitle">The left route continues into ice and wind.</div>
         </div>
       )}
 
@@ -189,6 +186,10 @@ export const UIManager = () => {
           <div className="overlay-card">
             <div className="title">Summit Reached</div>
             <div className="subtitle">Your climb was a success.</div>
+            <div className="tutorial-grid">
+              <span><b>Time</b> {formatTime(time)}</span>
+              <span><b>Deaths</b> {falls}</span>
+            </div>
             <button className="btn" type="button" onClick={restart}>
               Play Again
             </button>

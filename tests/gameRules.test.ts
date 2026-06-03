@@ -5,9 +5,8 @@ import { LEVELS } from '../src/data/levels.ts';
 
 const baseState = {
   level: 1,
-  maxLevels: 2,
+  maxLevels: 1,
   falls: 0,
-  maxFalls: 5,
   teleportVersion: 3,
   started: true,
 };
@@ -21,24 +20,17 @@ test('hazard hit consumes one fall and triggers respawn', () => {
   });
 });
 
-test('last allowed hazard hit ends the run', () => {
-  assert.deepEqual(applyHazardHit({ ...baseState, falls: 4 }), {
-    falls: 5,
-    lose: true,
-    started: false,
+test('hazard hits never end the run by fall count', () => {
+  assert.deepEqual(applyHazardHit({ ...baseState, falls: 24 }), {
+    falls: 25,
+    lose: false,
+    started: true,
     teleportVersion: 4,
   });
 });
 
-test('first summit advances to level two and teleports', () => {
+test('summit wins the single connected route', () => {
   assert.deepEqual(applyGoalReached(baseState), {
-    level: 2,
-    teleportVersion: 4,
-  });
-});
-
-test('second summit wins the game', () => {
-  assert.deepEqual(applyGoalReached({ ...baseState, level: 2 }), {
     win: true,
     started: false,
   });
@@ -63,15 +55,16 @@ test('levels provide a substantial climb before the summit', () => {
 });
 
 test('terraces rise from ground without floating support blocks', () => {
-  for (const level of Object.values(LEVELS)) {
-    for (const block of level.gameplay.blocks.slice(1)) {
-      assert.ok(Math.abs(block.position[1] - block.size[1] / 2) < 0.01, 'raised terrace should meet the ground');
-    }
+  for (const block of LEVELS[1].gameplay.blocks.slice(1, 10)) {
+    assert.ok(Math.abs(block.position[1] - block.size[1] / 2) < 0.01, 'raised terrace should meet the ground');
+  }
+  for (const block of LEVELS[2].gameplay.blocks.slice(1)) {
+    assert.ok(Math.abs(block.position[1] - block.size[1] / 2) < 0.01, 'raised terrace should meet the ground');
   }
 });
 
 test('level one islands leave visible gaps within jumping distance', () => {
-  const blocks = LEVELS[1].gameplay.blocks.slice(1);
+  const blocks = LEVELS[1].gameplay.blocks.slice(1, 9);
   for (let index = 1; index < blocks.length; index += 1) {
     const previous = blocks[index - 1];
     const current = blocks[index];
@@ -79,6 +72,14 @@ test('level one islands leave visible gaps within jumping distance', () => {
     assert.ok(gap >= 2, 'neighboring islands should be visibly separated');
     assert.ok(gap <= 3.5, 'neighboring islands should remain within jumping distance');
   }
+});
+
+test('level one connects the frozen ridge on the left side', () => {
+  const snowBlocks = LEVELS[1].gameplay.blocks.slice(10);
+  assert.ok(snowBlocks.length >= 7);
+  assert.ok(snowBlocks.every((block) => block.position[0] < -20), 'frozen ridge should sit left of the mountain route');
+  assert.equal(LEVELS[1].gameplay.iceRafts?.length, 5);
+  assert.ok((LEVELS[1].gameplay.windZones?.length ?? 0) >= 3);
 });
 
 test('level two crosses wide glacier gaps using moving ice rafts', () => {
@@ -110,6 +111,9 @@ test('each level exposes distinct traversal mechanics', () => {
   assert.ok(LEVELS[1].gameplay.ambushDrops.some((ambush) => ambush.kind === 'tree'));
   assert.ok(LEVELS[1].gameplay.ambushDrops.some((ambush) => ambush.kind === 'crate'));
   assert.ok(LEVELS[1].gameplay.chestTraps.length > 0);
+  assert.ok((LEVELS[1].gameplay.icePatches?.length ?? 0) > 0);
+  assert.ok((LEVELS[1].gameplay.iceRafts?.length ?? 0) > 0);
+  assert.ok((LEVELS[1].gameplay.windZones?.length ?? 0) > 0);
   assert.ok(LEVELS[2].gameplay.ambushDrops.every((ambush) => ambush.kind === 'rock'));
   assert.ok((LEVELS[2].gameplay.icePatches?.length ?? 0) > 0);
   assert.ok((LEVELS[2].gameplay.iceRafts?.length ?? 0) > 0);
@@ -133,6 +137,9 @@ test('difficulty curve keeps dense mixed trap layouts', () => {
   assert.ok(LEVELS[1].gameplay.trapFloors.length >= 4);
   assert.ok(LEVELS[1].gameplay.snareTraps.length >= 3);
   assert.ok(LEVELS[1].gameplay.chestTraps.length >= 2);
+  assert.ok((LEVELS[1].gameplay.icePatches?.length ?? 0) >= 4);
+  assert.ok((LEVELS[1].gameplay.iceRafts?.length ?? 0) >= 5);
+  assert.ok((LEVELS[1].gameplay.windZones?.length ?? 0) >= 3);
 
   assert.ok(LEVELS[2].gameplay.ambushDrops.length >= 4);
   assert.ok((LEVELS[2].gameplay.icePatches?.length ?? 0) >= 5);

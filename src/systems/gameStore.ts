@@ -4,8 +4,6 @@ import { applyGoalReached, applyHazardHit } from './gameRules';
 export type Vec3 = { x: number; y: number; z: number };
 
 const defaultCheckpoint: Vec3 = { x: 0, y: 1.05, z: 0 };
-const levelTwoSpawn: Vec3 = { x: 0, y: 1.05, z: 0 };
-
 type GameState = {
   level: number;
   maxLevels: number;
@@ -27,11 +25,11 @@ type GameState = {
   exhaustedTime: number;
   slippery: boolean;
   wind: Vec3;
+  platformVelocity: Vec3;
   checkpointsHit: number;
   totalCheckpoints: number;
   lastCheckpoint: Vec3;
   falls: number;
-  maxFalls: number;
   win: boolean;
   lose: boolean;
   start: () => void;
@@ -53,16 +51,17 @@ type GameState = {
   reachGoal: () => void;
   setSlippery: (value: boolean) => void;
   setWind: (value: Vec3) => void;
+  setPlatformVelocity: (value: Vec3) => void;
   setExhaustedTime: (value: number) => void;
   updateExhausted: (dt: number) => void;
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
   level: 1,
-  maxLevels: 2,
+  maxLevels: 1,
   teleportVersion: 0,
   runVersion: 0,
-  cameraSensitivity: 0.7,
+  cameraSensitivity: 1.1,
   soundVolume: 0.65,
   transitionTime: 0,
   respawnTime: 0,
@@ -78,11 +77,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   exhaustedTime: 0,
   slippery: false,
   wind: { x: 0, y: 0, z: 0 },
+  platformVelocity: { x: 0, y: 0, z: 0 },
   checkpointsHit: 0,
   totalCheckpoints: 0,
   lastCheckpoint: defaultCheckpoint,
   falls: 0,
-  maxFalls: 5,
   win: false,
   lose: false,
   start: () => set({ started: true }),
@@ -103,6 +102,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       exhaustedTime: 0,
       slippery: false,
       wind: { x: 0, y: 0, z: 0 },
+      platformVelocity: { x: 0, y: 0, z: 0 },
       checkpointsHit: 0,
       lastCheckpoint: defaultCheckpoint,
       falls: 0,
@@ -124,6 +124,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       exhaustedTime: 0,
       slippery: false,
       wind: { x: 0, y: 0, z: 0 },
+      platformVelocity: { x: 0, y: 0, z: 0 },
       checkpointsHit: 0,
       lastCheckpoint: defaultCheckpoint,
       falls: 0,
@@ -161,27 +162,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       const falls = state.falls + 1;
       return {
         falls,
-        lose: falls >= state.maxFalls,
-        started: falls >= state.maxFalls ? false : state.started,
+        lose: false,
+        started: state.started,
       };
     }),
   setWin: () => set({ win: true, started: false }),
   reachGoal: () =>
     set((state) => {
-      const progress = applyGoalReached(state);
-      if ('win' in progress) return progress;
-
       return {
-        ...progress,
-        stamina: state.maxStamina,
-        exhaustedTime: 0,
-        slippery: false,
-        wind: { x: 0, y: 0, z: 0 },
-        transitionTime: 2.1,
-        soundEvent: 'level',
-        soundVersion: state.soundVersion + 1,
-        checkpointsHit: 0,
-        lastCheckpoint: levelTwoSpawn,
+        ...applyGoalReached(state),
       };
     }),
   hitHazard: () =>
@@ -191,8 +180,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       return {
         ...progress,
         wind: { x: 0, y: 0, z: 0 },
+        platformVelocity: { x: 0, y: 0, z: 0 },
         teleportVersion: state.teleportVersion,
-        respawnTime: progress.lose ? 0 : 0.78,
+        respawnTime: 0.78,
         soundEvent: 'hazard',
         soundVersion: state.soundVersion + 1,
         hitVersion: state.hitVersion + 1,
@@ -200,6 +190,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }),
   setSlippery: (value) => set({ slippery: value }),
   setWind: (value) => set({ wind: value }),
+  setPlatformVelocity: (value) => set({ platformVelocity: value }),
   setExhaustedTime: (value) => set({ exhaustedTime: value }),
   updateExhausted: (dt) =>
     set((state) => ({

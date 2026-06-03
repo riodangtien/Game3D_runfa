@@ -11,9 +11,17 @@ type AmbushDropProps = {
   dropPosition: readonly [number, number, number];
   restPosition: readonly [number, number, number];
   rollDirection: readonly [number, number, number];
+  showMarker?: boolean;
 };
 
-export const AmbushDrop = ({ kind, triggerPosition, dropPosition, restPosition, rollDirection }: AmbushDropProps) => {
+export const AmbushDrop = ({
+  kind,
+  triggerPosition,
+  dropPosition,
+  restPosition,
+  rollDirection,
+  showMarker = true,
+}: AmbushDropProps) => {
   const bodyRef = useRef<RapierRigidBody | null>(null);
   const objectRef = useRef<THREE.Group | null>(null);
   const triggeredAt = useRef<number | null>(null);
@@ -75,6 +83,42 @@ export const AmbushDrop = ({ kind, triggerPosition, dropPosition, restPosition, 
 
   return (
     <>
+      {showMarker && (
+        <group position={triggerPosition as [number, number, number]}>
+          <mesh position={[0, -0.58, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <circleGeometry args={[kind === 'tree' ? 1.16 : 0.94, 18]} />
+            <meshStandardMaterial
+              color={kind === 'tree' ? '#7c6a50' : '#6f6254'}
+              roughness={1}
+              transparent
+              opacity={0.34}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          {[0, 1, 2].map((line) => (
+            <mesh
+              key={`ambush-crack-${line}`}
+              position={[line * 0.34 - 0.32, -0.54, line % 2 === 0 ? 0.12 : -0.18]}
+              rotation={[-Math.PI / 2, 0, line * 0.72 - 0.34]}
+            >
+              <boxGeometry args={[0.72 - line * 0.12, 0.035, 0.028]} />
+              <meshStandardMaterial color="#3f342c" roughness={1} transparent opacity={0.58} />
+            </mesh>
+          ))}
+          {[[-0.72, -0.48], [0.58, 0.44]].map(([x, z], pebbleIndex) => (
+            <mesh
+              key={`ambush-pebble-${pebbleIndex}`}
+              position={[x, -0.45, z]}
+              rotation={[0.2, pebbleIndex * 0.8, 0.1]}
+              scale={[0.16, 0.1, 0.14]}
+              castShadow
+            >
+              <dodecahedronGeometry args={[1, 0]} />
+              <meshStandardMaterial color="#5f5a50" roughness={1} />
+            </mesh>
+          ))}
+        </group>
+      )}
       <RigidBody type="fixed" colliders={false} position={triggerPosition}>
         <CuboidCollider
           args={[2.3, 1.3, 2.2]}

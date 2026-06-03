@@ -2,18 +2,13 @@ import * as THREE from 'three';
 import { useGameStore } from '../../systems/gameStore';
 
 const distantMountains = [
-  [-38, -5, 44, 15, 20],
-  [-18, -8, 76, 20, 29],
-  [8, -10, 92, 25, 36],
-  [33, -7, 66, 18, 26],
-  [50, -6, 38, 14, 21],
+  [-58, -9, 108, 9, 14],
+  [58, -10, 118, 10, 16],
 ] as const;
 
 const hills = [
-  [-30, -4.4, 18, 16, 7],
-  [-18, -4.2, 30, 18, 8],
-  [22, -4.5, 24, 20, 8],
-  [37, -4.6, 38, 17, 7],
+  [-36, -5.8, 24, 12, 5],
+  [34, -5.9, 28, 12, 5],
 ] as const;
 
 const river = [
@@ -28,11 +23,6 @@ const forest = [
   [-31, -2.8, 12, 1.3], [-27, -2.8, 18, 1.5], [-33, -2.8, 24, 1.1],
   [-23, -2.8, 29, 1.35], [27, -2.8, 14, 1.4], [33, -2.8, 19, 1.2],
   [26, -2.8, 28, 1.55], [39, -2.8, 32, 1.35], [31, -2.8, 38, 1.1],
-] as const;
-
-const waterfalls = [
-  [-24, 0.4, 35, 3.6, 7.5],
-  [28, 1.5, 52, 2.6, 7],
 ] as const;
 
 export const ScenicBackdrop = () => {
@@ -64,32 +54,6 @@ export const ScenicBackdrop = () => {
           <coneGeometry args={[radius, height, 9]} />
           <meshStandardMaterial color={snow ? '#879ca3' : index % 2 === 0 ? '#55714f' : '#66805a'} roughness={1} />
         </mesh>
-      ))}
-
-      {waterfalls.map(([x, y, z, width, height], index) => (
-        <group key={`waterfall-${index}`} position={[x, y, z]}>
-          <mesh position={[0, 0, 1.5]}>
-            <planeGeometry args={[width, height]} />
-            <meshStandardMaterial
-              color={snow ? '#c7eff4' : '#8cdde2'}
-              emissive={snow ? '#86cbd4' : '#5eabb7'}
-              emissiveIntensity={0.32}
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.88}
-            />
-          </mesh>
-          {[-0.34, 0.34].map((offset) => (
-            <mesh key={`waterfall-stream-${offset}`} position={[offset * width, 0, 1.54]}>
-              <planeGeometry args={[0.12, height * 0.96]} />
-              <meshBasicMaterial color="#d6f8f6" side={THREE.DoubleSide} transparent opacity={0.72} />
-            </mesh>
-          ))}
-          <mesh position={[0, -height / 2 - 0.2, 1.74]} rotation={[-Math.PI / 2, 0, 0]} scale={[width * 0.66, 1, width * 0.42]}>
-            <circleGeometry args={[1, 20]} />
-            <meshBasicMaterial color="#bcebed" side={THREE.DoubleSide} transparent opacity={0.64} />
-          </mesh>
-        </group>
       ))}
 
       {forest.map(([x, y, z, scale], index) => (

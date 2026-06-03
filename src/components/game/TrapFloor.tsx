@@ -51,6 +51,20 @@ export const TrapFloor = ({ position, size, color, delay = 0.48 }: TrapFloorProp
         <boxGeometry args={size} />
         <meshStandardMaterial color={color} emissive="#d97706" emissiveIntensity={0.12} roughness={0.88} />
       </mesh>
+      <mesh position={[0, size[1] / 2 + 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[Math.min(size[0], size[2]) * 0.38, 16]} />
+        <meshStandardMaterial color="#6b5c45" roughness={1} transparent opacity={0.28} side={THREE.DoubleSide} />
+      </mesh>
+      {[-0.32, 0.18, 0.46].map((offset, index) => (
+        <mesh
+          key={`trap-floor-crack-${index}`}
+          position={[offset, size[1] / 2 + 0.035, index % 2 === 0 ? -0.2 : 0.28]}
+          rotation={[-Math.PI / 2, 0, index * 0.64 - 0.28]}
+        >
+          <boxGeometry args={[0.86 - index * 0.12, 0.035, 0.026]} />
+          <meshStandardMaterial color="#3f342c" roughness={1} transparent opacity={0.62} />
+        </mesh>
+      ))}
       <CuboidCollider args={[size[0] / 2 - 0.06, size[1] / 2, size[2] / 2 - 0.06]} />
       <CuboidCollider
         args={[size[0] / 2 - 0.14, 0.36, size[2] / 2 - 0.14]}

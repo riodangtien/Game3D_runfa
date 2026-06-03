@@ -15,6 +15,8 @@ export const ChestTrap = ({ position, chargeDirection = [0, 0, -1] }: ChestTrapP
   const openedAt = useRef<number | null>(null);
   const canHit = useRef(true);
   const resolved = useRef(false);
+  const enemyGroupRef = useRef<THREE.Group | null>(null);
+  const swordRef = useRef<THREE.Mesh | null>(null);
   const paused = useGameStore((state) => state.paused);
   const hitHazard = useGameStore((state) => state.hitHazard);
   const [opened, setOpened] = useState(false);
@@ -31,16 +33,31 @@ export const ChestTrap = ({ position, chargeDirection = [0, 0, -1] }: ChestTrapP
     const triggered = openedAt.current;
     if (triggered === null) return;
     const elapsed = activeTime.current - triggered;
-    const charge = THREE.MathUtils.clamp((elapsed - 0.52) * 5.6, 0, 8);
-    setEnemyVisible(elapsed > 0.52 && elapsed < 1.04);
+    const jumpProgress = THREE.MathUtils.clamp((elapsed - 0.28) * 2.6, 0, 1);
+    const charge = THREE.MathUtils.clamp((elapsed - 0.72) * 2.1, 0, 3.2);
+    const slashWindow = THREE.MathUtils.clamp((elapsed - 0.92) / 1.42, 0, 1);
+    setEnemyVisible(elapsed > 0.22 && elapsed < 2.95);
 
     enemyRef.current.setNextKinematicTranslation({
       x: enemySpawn[0] + chargeDirection[0] * charge,
-      y: position[1] + 0.84,
+      y: position[1] + 0.84 + Math.sin(jumpProgress * Math.PI) * 1.05,
       z: enemySpawn[2] + chargeDirection[2] * charge,
     });
 
-    if (elapsed > 0.82 && !resolved.current) {
+    if (enemyGroupRef.current) {
+      enemyGroupRef.current.rotation.y = Math.atan2(chargeDirection[0], chargeDirection[2]) + Math.PI;
+    }
+
+    if (swordRef.current) {
+      const slashPhase = Math.floor(slashWindow * 3);
+      const slashLocal = slashWindow === 1 ? 1 : slashWindow * 3 - slashPhase;
+      const slashSwing = Math.sin(slashLocal * Math.PI);
+      swordRef.current.rotation.z = -0.95 + slashSwing * 2.25;
+      swordRef.current.rotation.x = 0.18 + slashPhase * 0.12;
+    }
+    if (elapsed > 2.2) canHit.current = true;
+
+    if (elapsed > 2.38 && !resolved.current) {
       resolved.current = true;
       canHit.current = false;
       hitHazard();
@@ -59,7 +76,7 @@ export const ChestTrap = ({ position, chargeDirection = [0, 0, -1] }: ChestTrapP
   const openChest = () => {
     if (openedAt.current !== null) return;
     openedAt.current = activeTime.current;
-    canHit.current = true;
+    canHit.current = false;
     resolved.current = false;
     setOpened(true);
   };
@@ -90,7 +107,7 @@ export const ChestTrap = ({ position, chargeDirection = [0, 0, -1] }: ChestTrapP
         />
       </RigidBody>
       <RigidBody ref={enemyRef} type="kinematicPosition" colliders={false} position={enemySpawn}>
-        <group visible={enemyVisible}>
+        <group ref={enemyGroupRef} visible={enemyVisible}>
           <mesh position={[0, 0.76, 0]} castShadow>
             <cylinderGeometry args={[0.34, 0.5, 1.18, 8]} />
             <meshStandardMaterial color="#6b1d24" roughness={0.9} />
@@ -119,7 +136,7 @@ export const ChestTrap = ({ position, chargeDirection = [0, 0, -1] }: ChestTrapP
             <cylinderGeometry args={[0.12, 0.15, 0.72, 8]} />
             <meshStandardMaterial color="#26313f" roughness={0.92} />
           </mesh>
-          <mesh position={[0.72, 0.92, 0]} rotation={[0, 0, -0.72]} castShadow>
+          <mesh ref={swordRef} position={[0.72, 0.92, 0]} rotation={[0, 0, -0.72]} castShadow>
             <boxGeometry args={[0.13, 1.78, 0.08]} />
             <meshStandardMaterial color="#e5e7eb" metalness={0.75} roughness={0.28} />
           </mesh>

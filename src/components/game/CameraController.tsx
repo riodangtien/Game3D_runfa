@@ -8,8 +8,8 @@ type CameraControllerProps = {
   target: React.MutableRefObject<RapierRigidBody | null>;
 };
 
-const MOUSE_SENSITIVITY_X = 0.00056;
-const MOUSE_SENSITIVITY_Y = 0.00038;
+const MOUSE_SENSITIVITY_X = 0.00082;
+const MOUSE_SENSITIVITY_Y = 0.00052;
 const MOUSE_DEAD_ZONE = 1;
 const MAX_MOUSE_DELTA_X = 40;
 const MAX_MOUSE_DELTA_Y = 30;
