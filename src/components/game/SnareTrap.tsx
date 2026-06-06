@@ -20,10 +20,11 @@ export const SnareTrap = ({ position, rotation = 0 }: SnareTrapProps) => {
   useFrame((_, dt) => {
     if (paused) return;
     activeTime.current += dt;
-    const triggered = triggeredAt.current;
-    if (triggered === null) return;
-
-    if (activeTime.current - triggered > 0.18 && !resolved.current) {
+    if (
+      triggeredAt.current !== null &&
+      activeTime.current - triggeredAt.current > 0.18 &&
+      !resolved.current
+    ) {
       resolved.current = true;
       hitHazard();
     }

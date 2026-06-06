@@ -74,10 +74,11 @@ export const CameraController = ({ target }: CameraControllerProps) => {
 
   useFrame((state, dt) => {
     if (!target.current) return;
+    const frameDt = Math.min(dt, 1 / 45);
 
     const position = target.current.translation();
     const distance = zoom.current;
-    const rotationBlend = 1 - Math.exp(-CAMERA_ROTATION_SMOOTHING * dt);
+    const rotationBlend = 1 - Math.exp(-CAMERA_ROTATION_SMOOTHING * frameDt);
     yaw.current = THREE.MathUtils.lerp(yaw.current, targetYaw.current, rotationBlend);
     pitch.current = THREE.MathUtils.lerp(pitch.current, targetPitch.current, rotationBlend);
     const horizontalDistance = Math.cos(pitch.current) * distance;
@@ -105,11 +106,11 @@ export const CameraController = ({ target }: CameraControllerProps) => {
     collisionDistance.current = THREE.MathUtils.lerp(
       collisionDistance.current,
       clearDistance,
-      1 - Math.exp(-collisionSmoothing * dt)
+      1 - Math.exp(-collisionSmoothing * frameDt)
     );
     desiredPosition.current.copy(lookAt.current).addScaledVector(cameraDirection.current, collisionDistance.current);
 
-    state.camera.position.lerp(desiredPosition.current, 1 - Math.exp(-CAMERA_POSITION_SMOOTHING * dt));
+    state.camera.position.lerp(desiredPosition.current, 1 - Math.exp(-CAMERA_POSITION_SMOOTHING * frameDt));
     state.camera.lookAt(lookAt.current);
   });
 

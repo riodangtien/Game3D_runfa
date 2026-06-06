@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import { applyGoalReached, applyHazardHit } from './gameRules';
+import { clearPlayerProgress, loadPlayerProgress, savePlayerProgress } from './playerProgress';
 
 export type Vec3 = { x: number; y: number; z: number };
 
 const defaultCheckpoint: Vec3 = { x: 0, y: 1.05, z: 0 };
+const savedProgress = loadPlayerProgress();
+const initialProgress = savedProgress?.level === 1 ? savedProgress : null;
 type GameState = {
   level: number;
   maxLevels: number;
@@ -57,7 +60,7 @@ type GameState = {
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
-  level: 1,
+  level: initialProgress?.level ?? 1,
   maxLevels: 1,
   teleportVersion: 0,
   runVersion: 0,
@@ -78,16 +81,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   slippery: false,
   wind: { x: 0, y: 0, z: 0 },
   platformVelocity: { x: 0, y: 0, z: 0 },
-  checkpointsHit: 0,
+  checkpointsHit: initialProgress?.checkpointsHit ?? 0,
   totalCheckpoints: 0,
-  lastCheckpoint: defaultCheckpoint,
+  lastCheckpoint: initialProgress?.lastCheckpoint ?? defaultCheckpoint,
   falls: 0,
   win: false,
   lose: false,
   start: () => set({ started: true }),
   setPaused: (value) => set({ paused: value }),
   setInstructionOpen: (value) => set({ instructionOpen: value }),
-  reset: () =>
+  reset: () => {
+    clearPlayerProgress();
     set((state) => ({
       started: false,
       paused: false,
@@ -108,8 +112,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       falls: 0,
       win: false,
       lose: false,
-    })),
-  restart: () =>
+    }));
+  },
+  restart: () => {
+    clearPlayerProgress();
     set((state) => ({
       started: true,
       paused: false,
@@ -130,7 +136,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       falls: 0,
       win: false,
       lose: false,
-    })),
+    }));
+  },
   updateTime: (dt) => {
     const { started, paused, win, lose } = get();
     if (!started || paused || win || lose) return;
@@ -148,12 +155,20 @@ export const useGameStore = create<GameState>((set, get) => ({
     }),
   emitSound: (event) => set((state) => ({ soundEvent: event, soundVersion: state.soundVersion + 1 })),
   setCheckpoint: (pos, index) =>
-    set((state) => ({
-      lastCheckpoint: pos,
-      checkpointsHit: Math.max(state.checkpointsHit, index),
-      soundEvent: 'checkpoint',
-      soundVersion: state.soundVersion + 1,
-    })),
+    set((state) => {
+      const checkpointsHit = Math.max(state.checkpointsHit, index);
+      savePlayerProgress({
+        level: state.level,
+        checkpointsHit,
+        lastCheckpoint: pos,
+      });
+      return {
+        lastCheckpoint: pos,
+        checkpointsHit,
+        soundEvent: 'checkpoint',
+        soundVersion: state.soundVersion + 1,
+      };
+    }),
   setTotalCheckpoints: (count) => set({ totalCheckpoints: count }),
   setCameraSensitivity: (value) => set({ cameraSensitivity: value }),
   setSoundVolume: (value) => set({ soundVolume: value }),
@@ -166,19 +181,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         started: state.started,
       };
     }),
-  setWin: () => set({ win: true, started: false }),
-  reachGoal: () =>
-    set((state) => {
-      return {
-        ...applyGoalReached(state),
-      };
-    }),
   hitHazard: () =>
     set((state) => {
       if (state.respawnTime > 0) return state;
-      const progress = applyHazardHit(state);
       return {
-        ...progress,
+        ...applyHazardHit(state),
         wind: { x: 0, y: 0, z: 0 },
         platformVelocity: { x: 0, y: 0, z: 0 },
         teleportVersion: state.teleportVersion,
@@ -188,9 +195,27 @@ export const useGameStore = create<GameState>((set, get) => ({
         hitVersion: state.hitVersion + 1,
       };
     }),
+  setWin: () => set({ win: true, started: false }),
+  reachGoal: () =>
+    set((state) => {
+      const progress = applyGoalReached(state);
+      if ('win' in progress && progress.win) clearPlayerProgress();
+      return progress;
+    }),
   setSlippery: (value) => set({ slippery: value }),
   setWind: (value) => set({ wind: value }),
-  setPlatformVelocity: (value) => set({ platformVelocity: value }),
+  setPlatformVelocity: (value) =>
+    set((state) => {
+      const current = state.platformVelocity;
+      if (
+        Math.abs(current.x - value.x) < 0.02 &&
+        Math.abs(current.y - value.y) < 0.02 &&
+        Math.abs(current.z - value.z) < 0.02
+      ) {
+        return state;
+      }
+      return { platformVelocity: value };
+    }),
   setExhaustedTime: (value) => set({ exhaustedTime: value }),
   updateExhausted: (dt) =>
     set((state) => ({

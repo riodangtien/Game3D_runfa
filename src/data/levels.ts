@@ -16,7 +16,6 @@ export type LevelGameplay = {
     restPosition: Position;
     rollDirection: Position;
   }[];
-  chestTraps: readonly { position: Position; chargeDirection?: Position }[];
   snareTraps: readonly { position: Position; rotation?: number }[];
   icePatches?: readonly { position: Position; size: Position }[];
   iceRafts?: readonly {
@@ -27,6 +26,20 @@ export type LevelGameplay = {
     speed: number;
   }[];
   windZones?: readonly { position: Position; size: Position; push: Position }[];
+  lavaJets?: readonly {
+    position: Position;
+    radius: number;
+    height: number;
+    interval: number;
+    activeTime: number;
+    phase?: number;
+  }[];
+  sweepTraps?: readonly {
+    position: Position;
+    length: number;
+    speed: number;
+    phase?: number;
+  }[];
 };
 
 export const LEVELS = {
@@ -45,8 +58,15 @@ export const LEVELS = {
       { index: 11, position: [-23, 15.05, 145] },
       { index: 12, position: [-32, 16.75, 161] },
       { index: 13, position: [-28, 18.45, 177] },
+      { index: 14, position: [-28, 17.9, 184] },
+      { index: 15, position: [-22, 14.45, 199] },
+      { index: 16, position: [-28, 12.25, 210] },
+      { index: 17, position: [-20, 13.95, 222] },
+      { index: 18, position: [-12, 15.8, 234] },
+      { index: 19, position: [-5, 17.5, 246] },
+      { index: 20, position: [0, 19.45, 258] },
     ],
-    goal: [-28, 18.45, 177],
+    goal: [0, 19.45, 258],
     gameplay: {
       blocks: [
         { position: [0, -1, 0], size: [27, 2, 16], color: '#59675d' },
@@ -66,6 +86,13 @@ export const LEVELS = {
         { position: [-23, 11.65, 145], size: [8, 6.5, 6], color: '#586f7a' },
         { position: [-32, 12.5, 161], size: [8, 8.2, 6], color: '#526975' },
         { position: [-28, 13.35, 177], size: [10, 9.9, 7], color: '#4b626e' },
+        { position: [-28, 12.5, 188], size: [12, 8.6, 8], color: '#4a4641' },
+        { position: [-22, 10.85, 199], size: [13, 6.9, 8], color: '#4d3f37' },
+        { position: [-28, 9.45, 210], size: [12, 5.3, 8], color: '#493630' },
+        { position: [-20, 10.6, 222], size: [10, 6.4, 8], color: '#5a5650' },
+        { position: [-12, 11.85, 234], size: [9, 7.6, 8], color: '#625f58' },
+        { position: [-5, 12.85, 246], size: [9, 9.0, 8], color: '#6b665e' },
+        { position: [0, 14.1, 258], size: [10, 10.4, 8], color: '#716b62' },
       ],
       trapFloors: [
         { position: [-1, 2.57, 28], size: [2.65, 0.3, 2.7], color: '#8fb879', delay: 0.42 },
@@ -73,6 +100,9 @@ export const LEVELS = {
         { position: [-1, 7.17, 68], size: [2.65, 0.3, 2.7], color: '#8fb879', delay: 0.38 },
         { position: [1, 8.32, 78], size: [2.8, 0.3, 2.7], color: '#8fb879', delay: 0.56 },
         { position: [0.4, 4.87, 38], size: [2.6, 0.3, 2.65], color: '#8fb879', delay: 0.31 },
+        { position: [-25.2, 15.25, 193.5], size: [2.45, 0.3, 2.55], color: '#7a4632', delay: 0.34 },
+        { position: [-24.6, 13.25, 204.5], size: [2.55, 0.3, 2.65], color: '#7a4632', delay: 0.4 },
+        { position: [-16, 14.85, 228], size: [2.5, 0.3, 2.6], color: '#807468', delay: 0.46 },
       ],
       ambushDrops: [
         { kind: 'crate', triggerPosition: [3, 2.5, 20], dropPosition: [3, 11, 23], restPosition: [3, 2.98, 23], rollDirection: [1, 0, 0] },
@@ -85,11 +115,6 @@ export const LEVELS = {
         { kind: 'rock', triggerPosition: [-1, 8.25, 76], dropPosition: [-1, 19, 79], restPosition: [-1, 8.92, 79], rollDirection: [-1, 0, 0] },
         { kind: 'rock', triggerPosition: [-29, 11.65, 112], dropPosition: [-25, 21.4, 115], restPosition: [-25, 12.32, 115], rollDirection: [-1, 0, 0] },
         { kind: 'rock', triggerPosition: [-29, 16.75, 160], dropPosition: [-31, 26.4, 163], restPosition: [-31, 17.42, 163], rollDirection: [1, 0, 0] },
-      ],
-      chestTraps: [
-        { position: [4.8, 4.82, 43], chargeDirection: [-1, 0, 0] },
-        { position: [-3.8, 7.12, 63], chargeDirection: [1, 0, 0] },
-        { position: [3.8, 5.97, 53], chargeDirection: [-1, 0, 0] },
       ],
       snareTraps: [
         { position: [-1.4, 2.57, 23], rotation: 0.2 },
@@ -114,6 +139,16 @@ export const LEVELS = {
         { position: [-28, 15.3, 137], size: [13, 3.4, 8], push: [2.2, 0, 0] },
         { position: [-28, 17, 153], size: [14, 3.4, 8], push: [-2.65, 0, 0] },
         { position: [-28, 18.7, 169], size: [13, 3.4, 8], push: [3, 0, 0] },
+      ],
+      lavaJets: [
+        { position: [-31.5, 16.85, 188.2], radius: 1.05, height: 3.8, interval: 2.4, activeTime: 0.72, phase: 0.2 },
+        { position: [-18.8, 14.35, 200.4], radius: 0.95, height: 3.4, interval: 2.15, activeTime: 0.62, phase: 0.88 },
+        { position: [-30.8, 12.15, 211.6], radius: 1.0, height: 3.6, interval: 2.35, activeTime: 0.7, phase: 1.35 },
+      ],
+      sweepTraps: [
+        { position: [-20, 13.9, 222.4], length: 5.4, speed: 1.35, phase: 0.2 },
+        { position: [-12, 15.75, 234.2], length: 4.8, speed: 1.55, phase: 1.1 },
+        { position: [-5, 17.45, 246.2], length: 5.2, speed: 1.75, phase: 0.55 },
       ],
     },
   },
@@ -144,7 +179,6 @@ export const LEVELS = {
         { kind: 'rock', triggerPosition: [-5, 4.95, 44], dropPosition: [-5, 15, 47], restPosition: [-5, 5.62, 47], rollDirection: [1, 0, 0] },
         { kind: 'rock', triggerPosition: [-4, 8.35, 76], dropPosition: [-4, 18, 79], restPosition: [-4, 9.02, 79], rollDirection: [1, 0, 0] },
       ],
-      chestTraps: [],
       snareTraps: [],
       icePatches: [
         { position: [-5, 1.43, 16], size: [4, 0.08, 3] },

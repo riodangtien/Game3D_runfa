@@ -10,6 +10,8 @@ import { useGameStore } from '../../systems/gameStore';
 import { applyStaminaDelta } from '../../systems/StaminaSystem';
 import { CameraController } from './CameraController';
 import { RapierRigidBody } from '@react-three/rapier';
+import { notifyMultiplayerFall, publishPlayerState } from '../../systems/multiplayerNetwork';
+import { useMultiplayerStore } from '../../systems/multiplayerStore';
 
 const MOVE_SPEED = 5.5;
 const SPRINT_MULT = 1.48;
@@ -59,6 +61,12 @@ export const PlayerController = () => {
   const respawnTime = useGameStore((state) => state.respawnTime);
   const emitSound = useGameStore((state) => state.emitSound);
   const hitVersion = useGameStore((state) => state.hitVersion);
+  const multiplayerStatus = useMultiplayerStore((state) => state.status);
+  const multiplayerMode = useMultiplayerStore((state) => state.mode);
+  const remotePosition = useMultiplayerStore((state) => state.remote.position);
+  const tetherFallVersion = useMultiplayerStore((state) => state.tetherFallVersion);
+  const setLocalPosition = useMultiplayerStore((state) => state.setLocalPosition);
+  const lastTetherFall = useRef(0);
 
   useEffect(() => {
     if (!bodyRef.current) return;
@@ -70,8 +78,15 @@ export const PlayerController = () => {
     if (hitVersion > 0) hitTimer.current = 0.5;
   }, [hitVersion]);
 
+  useEffect(() => {
+    if (tetherFallVersion <= lastTetherFall.current) return;
+    lastTetherFall.current = tetherFallVersion;
+    useGameStore.getState().hitHazard();
+  }, [tetherFallVersion]);
+
   useFrame((state, dt) => {
     if (!bodyRef.current) return;
+    const frameDt = Math.min(dt, 1 / 45);
 
     if (paused) {
       bodyRef.current.setGravityScale(0, true);
@@ -96,6 +111,17 @@ export const PlayerController = () => {
     const currentVelocity = bodyRef.current.linvel();
     const position = bodyRef.current.translation();
     const { forward, right, move, up } = vectors.current;
+    const localPosition: [number, number, number] = [position.x, position.y, position.z];
+    setLocalPosition(localPosition);
+    if (multiplayerStatus === 'connected') {
+      publishPlayerState({
+        position: localPosition,
+        rotation: modelRef.current?.rotation.y ?? 0,
+        animation: animStateRef.current,
+        falls: useGameStore.getState().falls,
+        finished: win,
+      });
+    }
 
     state.camera.getWorldDirection(forward);
     forward.y = 0;
@@ -113,7 +139,7 @@ export const PlayerController = () => {
 
     if (modelRef.current) {
       const targetRotation = Math.atan2(forward.x, forward.z);
-      const rotationBlend = 1 - Math.exp(-12 * dt);
+      const rotationBlend = 1 - Math.exp(-12 * frameDt);
       const rotationDelta = Math.atan2(
         Math.sin(targetRotation - modelRef.current.rotation.y),
         Math.cos(targetRotation - modelRef.current.rotation.y)
@@ -139,9 +165,9 @@ export const PlayerController = () => {
       ? groundRay.collider && Math.abs(groundRay.timeOfImpact) <= 1.2
       : position.y <= 2.2;
     const canJump = Boolean(grounded && groundedTime.current >= 0.06 && currentVelocity.y <= 0.15);
-    groundedTime.current = grounded ? groundedTime.current + dt : 0;
-    landTimer.current = Math.max(0, landTimer.current - dt);
-    hitTimer.current = Math.max(0, hitTimer.current - dt);
+    groundedTime.current = grounded ? groundedTime.current + frameDt : 0;
+    landTimer.current = Math.max(0, landTimer.current - frameDt);
+    hitTimer.current = Math.max(0, hitTimer.current - frameDt);
     if (!wasGrounded.current && grounded && currentVelocity.y < -1.1) {
       landTimer.current = 0.24;
       emitSound('land');
@@ -156,17 +182,30 @@ export const PlayerController = () => {
           ? GROUND_ACCELERATION
           : GROUND_BRAKING
         : AIR_ACCELERATION;
-    const traction = 1 - Math.exp(-acceleration * dt);
+    const traction = 1 - Math.exp(-acceleration * frameDt);
     const carriedVelocityX = grounded ? platformVelocity.x : 0;
     const carriedVelocityZ = grounded ? platformVelocity.z : 0;
     const targetVelocityX =
       (!grounded && moveLength === 0 ? currentVelocity.x : move.x * speed) + wind.x + carriedVelocityX;
     const targetVelocityZ =
       (!grounded && moveLength === 0 ? currentVelocity.z : move.z * speed) + wind.z + carriedVelocityZ;
+    let tetherVelocityX = 0;
+    let tetherVelocityZ = 0;
+    if (multiplayerStatus === 'connected' && multiplayerMode === 'tether') {
+      const tetherX = remotePosition[0] - position.x;
+      const tetherZ = remotePosition[2] - position.z;
+      const tetherDistance = Math.hypot(tetherX, remotePosition[1] - position.y, tetherZ);
+      if (tetherDistance > 5.5) {
+        const pull = Math.min(8.5, (tetherDistance - 5.5) * 1.65);
+        const horizontalDistance = Math.max(0.01, Math.hypot(tetherX, tetherZ));
+        tetherVelocityX = (tetherX / horizontalDistance) * pull;
+        tetherVelocityZ = (tetherZ / horizontalDistance) * pull;
+      }
+    }
     bodyRef.current.setLinvel({
-      x: THREE.MathUtils.lerp(currentVelocity.x, targetVelocityX, traction),
+      x: THREE.MathUtils.lerp(currentVelocity.x, targetVelocityX + tetherVelocityX, traction),
       y: currentVelocity.y,
-      z: THREE.MathUtils.lerp(currentVelocity.z, targetVelocityZ, traction),
+      z: THREE.MathUtils.lerp(currentVelocity.z, targetVelocityZ + tetherVelocityZ, traction),
     }, true);
 
     const jumpJustPressed = input.jump && !jumpPressedLast.current;
@@ -183,12 +222,13 @@ export const PlayerController = () => {
     }
 
     if (sprinting) {
-      applyStaminaDelta(-STAMINA_DRAIN * dt);
+      applyStaminaDelta(-STAMINA_DRAIN * frameDt);
     } else if (moveLength === 0 || !input.sprint) {
-      applyStaminaDelta(STAMINA_REGEN * dt);
+      applyStaminaDelta(STAMINA_REGEN * frameDt);
     }
 
     if (position.y < -6) {
+      if (multiplayerStatus === 'connected' && multiplayerMode === 'tether') notifyMultiplayerFall();
       addFall();
       bodyRef.current.setTranslation(lastCheckpoint, true);
       bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);

@@ -6,6 +6,7 @@ import { CheckpointSystem } from '../../systems/CheckpointSystem';
 import { GameManager } from '../../systems/GameManager';
 import { useGameStore } from '../../systems/gameStore';
 import { ScenicBackdrop } from './ScenicBackdrop';
+import { RemotePlayer } from './RemotePlayer';
 
 export const GameScene = () => {
   const level = useGameStore((state) => state.level);
@@ -34,6 +35,7 @@ export const GameScene = () => {
       <Physics gravity={[0, -20, 0]}>
         <GameManager />
         <PlayerController />
+        <RemotePlayer />
         <MountainEnvironment />
         <CheckpointSystem />
       </Physics>

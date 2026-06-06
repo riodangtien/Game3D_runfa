@@ -11,6 +11,8 @@ export const Checkpoint = ({ index, position }: CheckpointProps) => {
 
   return (
     <RigidBody type="fixed" colliders={false} position={position}>
+      <CuboidCollider args={[0.58, 0.16, 0.58]} position={[0, 0.14, 0]} />
+      <CuboidCollider args={[0.28, 0.68, 0.28]} position={[0, 0.82, 0]} />
       <mesh position={[0, 0.14, 0]} castShadow>
         <cylinderGeometry args={[0.64, 0.82, 0.28, 7]} />
         <meshStandardMaterial color="#556258" roughness={1} />
@@ -33,6 +35,7 @@ export const Checkpoint = ({ index, position }: CheckpointProps) => {
       </mesh>
       <CuboidCollider
         args={[1.2, 1.2, 1.2]}
+        position={[0, 0.9, 0]}
         sensor
         onIntersectionEnter={({ other }) => {
           if (other.rigidBodyObject?.name === 'player') {

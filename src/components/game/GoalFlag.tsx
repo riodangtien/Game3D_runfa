@@ -1,5 +1,6 @@
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
 import { useGameStore } from '../../systems/gameStore';
+import { notifyMultiplayerFinish } from '../../systems/multiplayerNetwork';
 
 type GoalFlagProps = {
   position: readonly [number, number, number];
@@ -35,6 +36,7 @@ export const GoalFlag = ({ position }: GoalFlagProps) => {
         sensor
         onIntersectionEnter={({ other }) => {
           if (other.rigidBodyObject?.name === 'player') {
+            notifyMultiplayerFinish();
             reachGoal();
           }
         }}

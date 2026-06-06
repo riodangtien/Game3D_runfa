@@ -11,7 +11,7 @@ const baseState = {
   started: true,
 };
 
-test('hazard hit consumes one fall and triggers respawn', () => {
+test('hazards restore the previous checkpoint respawn flow', () => {
   assert.deepEqual(applyHazardHit(baseState), {
     falls: 1,
     lose: false,
@@ -20,7 +20,7 @@ test('hazard hit consumes one fall and triggers respawn', () => {
   });
 });
 
-test('hazard hits never end the run by fall count', () => {
+test('hazard deaths remain unlimited', () => {
   assert.deepEqual(applyHazardHit({ ...baseState, falls: 24 }), {
     falls: 25,
     lose: false,
@@ -36,13 +36,14 @@ test('summit wins the single connected route', () => {
   });
 });
 
-test('checkpoint routes climb steadily without impossible height jumps', () => {
+test('checkpoint routes keep playable height changes between sections', () => {
   for (const level of Object.values(LEVELS)) {
     for (let index = 1; index < level.checkpoints.length; index += 1) {
       const previous = level.checkpoints[index - 1].position;
       const current = level.checkpoints[index].position;
-      assert.ok(current[1] > previous[1], 'checkpoint height should increase');
-      assert.ok(current[1] - previous[1] <= 2, 'checkpoint height jump should remain playable');
+      const delta = current[1] - previous[1];
+      assert.ok(delta <= 2.6, 'checkpoint height climb should remain playable');
+      assert.ok(delta >= -3.7, 'checkpoint descent should remain readable and survivable');
     }
   }
 });
@@ -75,11 +76,25 @@ test('level one islands leave visible gaps within jumping distance', () => {
 });
 
 test('level one connects the frozen ridge on the left side', () => {
-  const snowBlocks = LEVELS[1].gameplay.blocks.slice(10);
+  const snowBlocks = LEVELS[1].gameplay.blocks.slice(10, 17);
   assert.ok(snowBlocks.length >= 7);
   assert.ok(snowBlocks.every((block) => block.position[0] < -20), 'frozen ridge should sit left of the mountain route');
   assert.equal(LEVELS[1].gameplay.iceRafts?.length, 5);
   assert.ok((LEVELS[1].gameplay.windZones?.length ?? 0) >= 3);
+});
+
+test('level one extends from snow into a lava valley and rock summit', () => {
+  const volcanoBlocks = LEVELS[1].gameplay.blocks.slice(17, 20);
+  const rockBlocks = LEVELS[1].gameplay.blocks.slice(20);
+  assert.equal(volcanoBlocks.length, 3);
+  assert.ok(volcanoBlocks.every((block) => block.position[2] >= 188 && block.position[2] <= 210));
+  assert.ok(rockBlocks.length >= 4);
+  assert.ok(LEVELS[1].goal[2] >= 250);
+  assert.ok(LEVELS[1].gameplay.trapFloors.some((floor) => floor.color === '#7a4632'));
+  assert.ok((LEVELS[1].gameplay.lavaJets?.length ?? 0) >= 3);
+  assert.ok((LEVELS[1].gameplay.sweepTraps?.length ?? 0) >= 3);
+  assert.equal('chestTraps' in LEVELS[1].gameplay, false);
+  assert.equal(LEVELS[1].gameplay.snareTraps.some((snare) => snare.position[2] > 180), false);
 });
 
 test('level two crosses wide glacier gaps using moving ice rafts', () => {
@@ -110,7 +125,7 @@ test('each level exposes distinct traversal mechanics', () => {
   assert.ok(LEVELS[1].gameplay.trapFloors.length > 0);
   assert.ok(LEVELS[1].gameplay.ambushDrops.some((ambush) => ambush.kind === 'tree'));
   assert.ok(LEVELS[1].gameplay.ambushDrops.some((ambush) => ambush.kind === 'crate'));
-  assert.ok(LEVELS[1].gameplay.chestTraps.length > 0);
+  assert.equal('chestTraps' in LEVELS[1].gameplay, false);
   assert.ok((LEVELS[1].gameplay.icePatches?.length ?? 0) > 0);
   assert.ok((LEVELS[1].gameplay.iceRafts?.length ?? 0) > 0);
   assert.ok((LEVELS[1].gameplay.windZones?.length ?? 0) > 0);
@@ -136,7 +151,7 @@ test('difficulty curve keeps dense mixed trap layouts', () => {
   assert.ok(LEVELS[1].gameplay.ambushDrops.length >= 6);
   assert.ok(LEVELS[1].gameplay.trapFloors.length >= 4);
   assert.ok(LEVELS[1].gameplay.snareTraps.length >= 3);
-  assert.ok(LEVELS[1].gameplay.chestTraps.length >= 2);
+  assert.equal('chestTraps' in LEVELS[1].gameplay, false);
   assert.ok((LEVELS[1].gameplay.icePatches?.length ?? 0) >= 4);
   assert.ok((LEVELS[1].gameplay.iceRafts?.length ?? 0) >= 5);
   assert.ok((LEVELS[1].gameplay.windZones?.length ?? 0) >= 3);

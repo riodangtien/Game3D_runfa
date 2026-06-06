@@ -1,8 +1,10 @@
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { MultiplayerGuide } from './MultiplayerGuide';
 
 type Position = readonly [number, number, number];
+type FlowerSpec = readonly [number, number, number, number, string];
 
 const makeTexture = (kind: 'plaster' | 'roof' | 'wood', color: string) => {
   const size = 64;
@@ -289,7 +291,8 @@ const Well = ({ position }: { position: Position }) => (
 );
 
 const Lantern = ({ position }: { position: Position }) => (
-  <group position={position}>
+  <RigidBody type="fixed" colliders={false} position={position}>
+    <CuboidCollider args={[0.16, 1.42, 0.16]} position={[0, 1.42, 0]} />
     <mesh position={[0, 1.25, 0]} castShadow>
       <cylinderGeometry args={[0.06, 0.1, 2.5, 8]} />
       <meshStandardMaterial color="#5a3d2d" roughness={1} />
@@ -302,7 +305,7 @@ const Lantern = ({ position }: { position: Position }) => (
       <coneGeometry args={[0.36, 0.42, 4]} />
       <meshStandardMaterial color="#69452f" roughness={1} />
     </mesh>
-  </group>
+  </RigidBody>
 );
 
 const BroadleafTree = ({ position, scale = 1 }: { position: Position; scale?: number }) => (
@@ -327,7 +330,8 @@ const BroadleafTree = ({ position, scale = 1 }: { position: Position; scale?: nu
 );
 
 const Fence = ({ position, rotation = 0, length = 5 }: { position: Position; rotation?: number; length?: number }) => (
-  <group position={position} rotation={[0, rotation, 0]}>
+  <RigidBody type="fixed" colliders={false} position={position} rotation={[0, rotation, 0]}>
+    <CuboidCollider args={[length / 2, 0.68, 0.16]} position={[0, 0.68, 0]} />
     {Array.from({ length: Math.floor(length / 0.72) + 1 }, (_, index) => -length / 2 + index * 0.72).map((x) => (
       <mesh key={`fence-post-${x}`} position={[x, 0.62, 0]} castShadow>
         <cylinderGeometry args={[0.1, 0.14, 1.35, 7]} />
@@ -338,6 +342,103 @@ const Fence = ({ position, rotation = 0, length = 5 }: { position: Position; rot
       <mesh key={`fence-rail-${y}`} position={[0, y, 0]} castShadow>
         <boxGeometry args={[length, 0.12, 0.14]} />
         <meshStandardMaterial color="#8b6040" roughness={1} />
+      </mesh>
+    ))}
+  </RigidBody>
+);
+
+const PineTree = ({ position, scale = 1 }: { position: Position; scale?: number }) => (
+  <RigidBody type="fixed" colliders={false} position={position}>
+    <CuboidCollider args={[0.18 * scale, 0.82 * scale, 0.18 * scale]} position={[0, 0.82 * scale, 0]} />
+    <mesh position={[0, 0.82 * scale, 0]} castShadow>
+      <cylinderGeometry args={[0.14 * scale, 0.22 * scale, 1.64 * scale, 7]} />
+      <meshStandardMaterial color="#684730" roughness={1} />
+    </mesh>
+    <mesh position={[0, 2.0 * scale, 0]} castShadow>
+      <coneGeometry args={[0.82 * scale, 1.72 * scale, 8]} />
+      <meshStandardMaterial color="#2f6049" roughness={1} />
+    </mesh>
+    <mesh position={[0, 2.72 * scale, 0]} castShadow>
+      <coneGeometry args={[0.62 * scale, 1.32 * scale, 8]} />
+      <meshStandardMaterial color="#3d7252" roughness={1} />
+    </mesh>
+  </RigidBody>
+);
+
+const BarrelStack = ({ position, rotation = 0 }: { position: Position; rotation?: number }) => (
+  <RigidBody type="fixed" colliders={false} position={position} rotation={[0, rotation, 0]}>
+    <CuboidCollider args={[0.56, 0.62, 0.42]} position={[0.24, 0.62, 0]} />
+    {[
+      [0, 0.35, 0],
+      [0.52, 0.31, 0.08],
+      [0.24, 0.86, -0.05],
+    ].map(([x, y, z], index) => (
+      <mesh key={`barrel-${index}`} position={[x, y, z]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.24, 0.28, 0.58, 10]} />
+        <meshStandardMaterial color={index % 2 === 0 ? '#8d5b36' : '#a06a3e'} roughness={1} />
+      </mesh>
+    ))}
+    {[
+      [0, 0.35, 0],
+      [0.52, 0.31, 0.08],
+      [0.24, 0.86, -0.05],
+    ].map(([x, y, z], index) => (
+      <mesh key={`barrel-band-${index}`} position={[x, y, z]} rotation={[0, 0, Math.PI / 2]}>
+        <torusGeometry args={[0.27, 0.025, 5, 10]} />
+        <meshStandardMaterial color="#4b372c" roughness={1} />
+      </mesh>
+    ))}
+  </RigidBody>
+);
+
+const SignPost = ({ position, rotation = 0, label = 'SNOW' }: { position: Position; rotation?: number; label?: string }) => (
+  <RigidBody type="fixed" colliders={false} position={position} rotation={[0, rotation, 0]}>
+    <CuboidCollider args={[0.2, 0.85, 0.2]} position={[0, 0.85, 0]} />
+    <mesh position={[0, 0.82, 0]} castShadow>
+      <cylinderGeometry args={[0.08, 0.11, 1.64, 7]} />
+      <meshStandardMaterial color="#5b3a27" roughness={1} />
+    </mesh>
+    <mesh position={[0.46, 1.38, 0]} castShadow>
+      <boxGeometry args={[1.02, 0.38, 0.1]} />
+      <meshStandardMaterial color="#a97747" roughness={1} />
+    </mesh>
+    <mesh position={[0.96, 1.38, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <coneGeometry args={[0.2, 0.34, 3]} />
+      <meshStandardMaterial color="#a97747" roughness={1} />
+    </mesh>
+    {label === 'SNOW' && (
+      <mesh position={[0.32, 1.38, 0.058]}>
+        <boxGeometry args={[0.42, 0.06, 0.035]} />
+        <meshStandardMaterial color="#f1d6a2" roughness={1} />
+      </mesh>
+    )}
+  </RigidBody>
+);
+
+const Dock = ({ position, rotation = 0 }: { position: Position; rotation?: number }) => (
+  <RigidBody type="fixed" colliders={false} position={position} rotation={[0, rotation, 0]}>
+    <CuboidCollider args={[1.18, 0.16, 1.35]} position={[0, 0.12, 0]} />
+    {[-0.9, -0.3, 0.3, 0.9].map((x, index) => (
+      <mesh key={`dock-plank-${index}`} position={[x, 0.12, 0]} rotation={[0, index * 0.02, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.5, 0.16, 2.7]} />
+        <meshStandardMaterial color={index % 2 === 0 ? '#805437' : '#93613d'} roughness={1} />
+      </mesh>
+    ))}
+    {[-1.18, 1.18].map((x) => (
+      <mesh key={`dock-post-${x}`} position={[x, 0.62, -1.02]} castShadow>
+        <cylinderGeometry args={[0.1, 0.13, 1.22, 7]} />
+        <meshStandardMaterial color="#5b3a27" roughness={1} />
+      </mesh>
+    ))}
+  </RigidBody>
+);
+
+const ChimneySmoke = ({ position }: { position: Position }) => (
+  <group position={position}>
+    {[0, 1, 2].map((index) => (
+      <mesh key={`smoke-${index}`} position={[index * 0.18, index * 0.28, index * 0.08]} scale={1 - index * 0.12}>
+        <sphereGeometry args={[0.22 + index * 0.08, 8, 6]} />
+        <meshBasicMaterial color="#dce4df" transparent opacity={0.28 - index * 0.05} />
       </mesh>
     ))}
   </group>
@@ -352,6 +453,8 @@ const Path = () => (
       [-0.22, 0.07, 0.8, 1.62, 1.1],
       [0.35, 0.07, 3.2, 1.75, 1.14],
       [-0.12, 0.07, 5.6, 1.56, 1.02],
+      [-0.55, 0.07, 7.85, 1.34, 0.92],
+      [-1.15, 0.07, 10.1, 1.22, 0.82],
     ].map(([x, y, z, sx, sz], index) => (
       <mesh key={`path-stone-${index}`} position={[x, y, z]} rotation={[0, index * 0.28, 0]} scale={[sx, 1, sz]} receiveShadow>
         <cylinderGeometry args={[1, 1, 0.1, 10]} />
@@ -410,11 +513,32 @@ const VillageScatter = () => (
         </mesh>
       ))}
     </group>
+    {([
+      [-3.8, 0.02, 2.6, 0.46, '#e9c46a'],
+      [-6.6, 0.02, 3.8, 0.36, '#e76f51'],
+      [4.4, 0.02, -2.8, 0.42, '#f4a7b9'],
+      [7.4, 0.02, 3.4, 0.34, '#f2d35e'],
+      [-1.6, 0.02, 6.8, 0.38, '#f08a5d'],
+    ] as readonly FlowerSpec[]).map(([x, y, z, scale, color], index) => (
+      <group key={`wildflower-${index}`} position={[x, y, z]} scale={scale}>
+        {[0, 1, 2, 3].map((petal) => (
+          <mesh key={`petal-${petal}`} position={[Math.cos(petal * 1.57) * 0.18, 0.22, Math.sin(petal * 1.57) * 0.18]}>
+            <sphereGeometry args={[0.12, 6, 5]} />
+            <meshStandardMaterial color={color} roughness={1} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.18, 0]}>
+          <cylinderGeometry args={[0.035, 0.045, 0.36, 5]} />
+          <meshStandardMaterial color="#4f7d45" roughness={1} />
+        </mesh>
+      </group>
+    ))}
   </group>
 );
 
 export const MountainVillage = () => (
   <group>
+    <MultiplayerGuide />
     <Path />
     <VillageScatter />
     <Cottage position={[-10, 0, 2.6]} rotation={Math.PI / 2} wall="#d8c692" roof="#a4533d" />
@@ -422,11 +546,20 @@ export const MountainVillage = () => (
     <Cottage position={[-8.4, 0, -5.6]} rotation={0.08} wall="#cda874" roof="#c69754" thatch />
     <MarketStall position={[8.5, 0, -5.3]} rotation={-0.12} />
     <Well position={[5.5, 0, 4.7]} />
+    <Dock position={[-12.2, -0.08, 5.5]} rotation={Math.PI / 2 + 0.1} />
+    <SignPost position={[-6.2, 0, 7.1]} rotation={0.32} />
+    <BarrelStack position={[8.0, 0, -3.8]} rotation={0.42} />
+    <ChimneySmoke position={[-9.5, 3.72, 2.1]} />
+    <ChimneySmoke position={[9.4, 3.7, 1.7]} />
     <BroadleafTree position={[-11.5, 0, -1.8]} scale={0.92} />
     <BroadleafTree position={[11.6, 0, -2.7]} scale={0.86} />
     <BroadleafTree position={[-5.8, 0, -6.4]} scale={0.72} />
+    <PineTree position={[-12.0, 0, 5.6]} scale={0.62} />
+    <PineTree position={[12.0, 0, 5.6]} scale={0.58} />
     <Lantern position={[-3.1, 0, -3.4]} />
     <Lantern position={[3.4, 0, 2.8]} />
+    <Lantern position={[-7.4, 0, 6.6]} />
+    <Lantern position={[7.9, 0, 6.4]} />
     <Fence position={[-9.2, 0, 7]} length={6.4} />
     <Fence position={[9.4, 0, 7]} length={6.1} />
     <Fence position={[-11.8, 0, -6.8]} rotation={Math.PI / 2} length={3.2} />
