@@ -12,6 +12,7 @@ import { CameraController } from './CameraController';
 import { RapierRigidBody } from '@react-three/rapier';
 import { notifyMultiplayerFall, publishPlayerState } from '../../systems/multiplayerNetwork';
 import { useMultiplayerStore } from '../../systems/multiplayerStore';
+import { LEVELS } from '../../data/levels';
 
 const MOVE_SPEED = 5.5;
 const SPRINT_MULT = 1.48;
@@ -22,6 +23,8 @@ const GROUND_ACCELERATION = 13;
 const GROUND_BRAKING = 18;
 const AIR_ACCELERATION = 4.2;
 const ICE_ACCELERATION = 1.6;
+const PLAYER_BOTTOM_OFFSET = 0.84;
+const PLAYER_SUPPORT_MARGIN = 0.025;
 const AnimatedPlayer = lazy(() =>
   import('./AnimatedPlayer').then((module) => ({ default: module.AnimatedPlayer }))
 );
@@ -110,6 +113,30 @@ export const PlayerController = () => {
 
     const currentVelocity = bodyRef.current.linvel();
     const position = bodyRef.current.translation();
+    const currentLevel = useGameStore.getState().level as keyof typeof LEVELS;
+    const crossedTerrainTop = LEVELS[currentLevel].gameplay.blocks
+      .filter((block) => {
+      const top = block.position[1] + block.size[1] / 2;
+      const insideX =
+        Math.abs(position.x - block.position[0]) <= block.size[0] / 2 + PLAYER_SUPPORT_MARGIN;
+      const insideZ =
+        Math.abs(position.z - block.position[2]) <= block.size[2] / 2 + PLAYER_SUPPORT_MARGIN;
+      const currentBottom = position.y - PLAYER_BOTTOM_OFFSET;
+      const bodyAboveSurface = position.y >= top + 0.08;
+      const penetratedSurface = currentBottom < top - 0.22 && currentBottom > top - 0.72;
+      return insideX && insideZ && bodyAboveSurface && currentVelocity.y <= 0 && penetratedSurface;
+    })
+      .sort(
+        (a, b) =>
+          b.position[1] + b.size[1] / 2 - (a.position[1] + a.size[1] / 2)
+      )[0];
+    if (crossedTerrainTop) {
+      const top = crossedTerrainTop.position[1] + crossedTerrainTop.size[1] / 2;
+      const correctedY = top + PLAYER_BOTTOM_OFFSET + 0.02;
+      bodyRef.current.setTranslation({ x: position.x, y: correctedY, z: position.z }, true);
+      bodyRef.current.setLinvel({ x: currentVelocity.x, y: 0, z: currentVelocity.z }, true);
+      return;
+    }
     const { forward, right, move, up } = vectors.current;
     const localPosition: [number, number, number] = [position.x, position.y, position.z];
     setLocalPosition(localPosition);
@@ -263,6 +290,7 @@ export const PlayerController = () => {
         position={[0, 1.05, 0]}
         canSleep={false}
         ccd
+        contactSkin={0.035}
       >
         <CapsuleCollider args={[0.52, 0.32]} friction={0} />
         <Suspense fallback={null}>

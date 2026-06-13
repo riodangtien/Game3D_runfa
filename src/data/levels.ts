@@ -40,6 +40,18 @@ export type LevelGameplay = {
     speed: number;
     phase?: number;
   }[];
+  pendulumTraps?: readonly {
+    position: Position;
+    length: number;
+    speed: number;
+    phase?: number;
+  }[];
+  crusherTraps?: readonly {
+    position: Position;
+    width: number;
+    speed: number;
+    phase?: number;
+  }[];
 };
 
 export const LEVELS = {
@@ -65,8 +77,17 @@ export const LEVELS = {
       { index: 18, position: [-12, 15.8, 234] },
       { index: 19, position: [-5, 17.5, 246] },
       { index: 20, position: [0, 19.45, 258] },
+      { index: 21, position: [7, 21.3, 270] },
+      { index: 22, position: [-2, 22.95, 282] },
+      { index: 23, position: [7, 24.65, 294] },
+      { index: 24, position: [0, 26.45, 306] },
+      { index: 25, position: [-8, 28.25, 318] },
+      { index: 26, position: [3, 30.05, 330] },
+      { index: 27, position: [-7, 31.85, 342] },
+      { index: 28, position: [4, 33.65, 354] },
+      { index: 29, position: [0, 35.45, 366] },
     ],
-    goal: [0, 19.45, 258],
+    goal: [0, 35.45, 366],
     gameplay: {
       blocks: [
         { position: [0, -1, 0], size: [27, 2, 16], color: '#59675d' },
@@ -93,34 +114,41 @@ export const LEVELS = {
         { position: [-12, 11.85, 234], size: [9, 7.6, 8], color: '#625f58' },
         { position: [-5, 12.85, 246], size: [9, 9.0, 8], color: '#6b665e' },
         { position: [0, 14.1, 258], size: [10, 10.4, 8], color: '#716b62' },
+        { position: [7, 15.25, 270], size: [9, 11.8, 8], color: '#69645d' },
+        { position: [-2, 16.2, 282], size: [9, 13.2, 8], color: '#625e58' },
+        { position: [7, 17.2, 294], size: [8, 14.6, 8], color: '#5c5954' },
+        { position: [0, 18.3, 306], size: [11, 16.0, 9], color: '#69655f' },
+        { position: [-8, 19.2, 318], size: [10, 17.8, 9], color: '#625e58' },
+        { position: [3, 20.1, 330], size: [11, 19.6, 9], color: '#595650' },
+        { position: [-7, 21.0, 342], size: [10, 21.4, 9], color: '#514f4a' },
+        { position: [4, 21.9, 354], size: [10, 23.2, 9], color: '#494844' },
+        { position: [0, 22.8, 366], size: [13, 25.0, 10], color: '#42413e' },
       ],
       trapFloors: [
         { position: [-1, 2.57, 28], size: [2.65, 0.3, 2.7], color: '#8fb879', delay: 0.42 },
         { position: [0, 6.02, 58], size: [2.7, 0.3, 2.7], color: '#8fb879', delay: 0.5 },
-        { position: [-1, 7.17, 68], size: [2.65, 0.3, 2.7], color: '#8fb879', delay: 0.38 },
         { position: [1, 8.32, 78], size: [2.8, 0.3, 2.7], color: '#8fb879', delay: 0.56 },
-        { position: [0.4, 4.87, 38], size: [2.6, 0.3, 2.65], color: '#8fb879', delay: 0.31 },
         { position: [-25.2, 15.25, 193.5], size: [2.45, 0.3, 2.55], color: '#7a4632', delay: 0.34 },
         { position: [-24.6, 13.25, 204.5], size: [2.55, 0.3, 2.65], color: '#7a4632', delay: 0.4 },
         { position: [-16, 14.85, 228], size: [2.5, 0.3, 2.6], color: '#807468', delay: 0.46 },
+        { position: [3.6, 20.15, 264], size: [2.45, 0.3, 2.5], color: '#8b806f', delay: 0.28 },
+        { position: [2.5, 23.55, 288], size: [2.35, 0.3, 2.45], color: '#83796b', delay: 0.52 },
       ],
       ambushDrops: [
-        { kind: 'crate', triggerPosition: [3, 2.5, 20], dropPosition: [3, 11, 23], restPosition: [3, 2.98, 23], rollDirection: [1, 0, 0] },
-        { kind: 'rock', triggerPosition: [3, 3.7, 30], dropPosition: [3, 12, 33], restPosition: [3, 4.32, 33], rollDirection: [-1, 0, 0] },
-        { kind: 'rock', triggerPosition: [3, 4.8, 40], dropPosition: [3, 14, 43], restPosition: [3, 5.48, 43], rollDirection: [-1, 0, 0] },
-        { kind: 'tree', triggerPosition: [3, 5.9, 50], dropPosition: [3, 15, 53], restPosition: [3, 6.22, 53], rollDirection: [0, 0, -1] },
-        { kind: 'rock', triggerPosition: [2, 7.1, 60], dropPosition: [2, 17, 63], restPosition: [2, 7.78, 63], rollDirection: [-1, 0, 0] },
-        { kind: 'crate', triggerPosition: [2, 8.2, 70], dropPosition: [2, 18, 73], restPosition: [2, 8.73, 73], rollDirection: [1, 0, 0] },
-        { kind: 'tree', triggerPosition: [-2, 4.8, 46], dropPosition: [-2, 15, 49], restPosition: [-2, 5.42, 49], rollDirection: [0, 0, -1] },
-        { kind: 'rock', triggerPosition: [-1, 8.25, 76], dropPosition: [-1, 19, 79], restPosition: [-1, 8.92, 79], rollDirection: [-1, 0, 0] },
+        { kind: 'crate', triggerPosition: [0, 2.5, 20], dropPosition: [5.2, 11, 23], restPosition: [5.2, 3.0, 23], rollDirection: [-1, 0, 0] },
+        { kind: 'rock', triggerPosition: [0, 3.65, 30], dropPosition: [-5.2, 12, 33], restPosition: [-5.2, 4.35, 33], rollDirection: [1, 0, 0] },
+        { kind: 'tree', triggerPosition: [0, 5.9, 50], dropPosition: [4.5, 15, 53], restPosition: [4.5, 6.25, 53], rollDirection: [-1, 0, 0] },
+        { kind: 'rock', triggerPosition: [0, 7.1, 60], dropPosition: [-4.2, 17, 63], restPosition: [-4.2, 7.8, 63], rollDirection: [1, 0, 0] },
         { kind: 'rock', triggerPosition: [-29, 11.65, 112], dropPosition: [-25, 21.4, 115], restPosition: [-25, 12.32, 115], rollDirection: [-1, 0, 0] },
         { kind: 'rock', triggerPosition: [-29, 16.75, 160], dropPosition: [-31, 26.4, 163], restPosition: [-31, 17.42, 163], rollDirection: [1, 0, 0] },
+        { kind: 'tree', triggerPosition: [7, 21.3, 267], dropPosition: [9, 32, 270], restPosition: [9, 21.92, 270], rollDirection: [-1, 0, 0] },
+        { kind: 'crate', triggerPosition: [-2, 22.95, 279], dropPosition: [-5, 34, 282], restPosition: [-5, 23.48, 282], rollDirection: [1, 0, 0] },
+        { kind: 'rock', triggerPosition: [7, 24.65, 291], dropPosition: [5, 36, 294], restPosition: [5, 25.32, 294], rollDirection: [-1, 0, 0] },
       ],
       snareTraps: [
-        { position: [-1.4, 2.57, 23], rotation: 0.2 },
-        { position: [1.6, 5.97, 53], rotation: -0.35 },
-        { position: [-1.2, 8.27, 73], rotation: 0.5 },
-        { position: [1.1, 4.82, 43], rotation: -0.18 },
+        { position: [4.5, 2.55, 25], rotation: 0.2 },
+        { position: [-4.2, 4.82, 45], rotation: -0.18 },
+        { position: [3.8, 7.12, 65], rotation: 0.5 },
       ],
       icePatches: [
         { position: [-29, 10.0, 103], size: [3.4, 0.08, 2.4] },
@@ -144,11 +172,24 @@ export const LEVELS = {
         { position: [-31.5, 16.85, 188.2], radius: 1.05, height: 3.8, interval: 2.4, activeTime: 0.72, phase: 0.2 },
         { position: [-18.8, 14.35, 200.4], radius: 0.95, height: 3.4, interval: 2.15, activeTime: 0.62, phase: 0.88 },
         { position: [-30.8, 12.15, 211.6], radius: 1.0, height: 3.6, interval: 2.35, activeTime: 0.7, phase: 1.35 },
+        { position: [8.5, 24.55, 294.5], radius: 0.88, height: 3.2, interval: 2.8, activeTime: 0.55, phase: 0.7 },
       ],
       sweepTraps: [
         { position: [-20, 13.9, 222.4], length: 5.4, speed: 1.35, phase: 0.2 },
         { position: [-12, 15.75, 234.2], length: 4.8, speed: 1.55, phase: 1.1 },
         { position: [-5, 17.45, 246.2], length: 5.2, speed: 1.75, phase: 0.55 },
+        { position: [7, 21.25, 270.6], length: 4.8, speed: 1.9, phase: 0.15 },
+        { position: [0, 26.4, 304.4], length: 5.8, speed: 2.1, phase: 1.25 },
+      ],
+      pendulumTraps: [
+        { position: [-12, 20.1, 235], length: 3.8, speed: 1.55, phase: 0.4 },
+        { position: [7, 28.7, 295], length: 3.9, speed: 1.85, phase: 1.2 },
+        { position: [0, 29.7, 305], length: 3.6, speed: 2.05, phase: 2.0 },
+      ],
+      crusherTraps: [
+        { position: [-8, 28.16, 318], width: 7.4, speed: 1.35, phase: 0.2 },
+        { position: [3, 29.96, 330], width: 8.2, speed: 1.55, phase: 2.1 },
+        { position: [4, 33.56, 354], width: 7.6, speed: 1.8, phase: 4.0 },
       ],
     },
   },
@@ -174,10 +215,8 @@ export const LEVELS = {
       ],
       trapFloors: [],
       ambushDrops: [
-        { kind: 'rock', triggerPosition: [-5, 1.55, 13], dropPosition: [-5, 11, 16], restPosition: [-5, 2.22, 16], rollDirection: [1, 0, 0] },
-        { kind: 'rock', triggerPosition: [5, 3.25, 28], dropPosition: [5, 13, 31], restPosition: [5, 3.92, 31], rollDirection: [-1, 0, 0] },
-        { kind: 'rock', triggerPosition: [-5, 4.95, 44], dropPosition: [-5, 15, 47], restPosition: [-5, 5.62, 47], rollDirection: [1, 0, 0] },
-        { kind: 'rock', triggerPosition: [-4, 8.35, 76], dropPosition: [-4, 18, 79], restPosition: [-4, 9.02, 79], rollDirection: [1, 0, 0] },
+        { kind: 'rock', triggerPosition: [0, 3.25, 28], dropPosition: [8, 13, 31], restPosition: [8, 3.92, 31], rollDirection: [-1, 0, 0] },
+        { kind: 'rock', triggerPosition: [0, 8.35, 76], dropPosition: [-7, 18, 79], restPosition: [-7, 9.02, 79], rollDirection: [1, 0, 0] },
       ],
       snareTraps: [],
       icePatches: [
@@ -198,6 +237,9 @@ export const LEVELS = {
         { position: [0, 6.9, 55], size: [13, 3.4, 8], push: [2.2, 0, 0] },
         { position: [0, 8.6, 71], size: [14, 3.4, 8], push: [-2.65, 0, 0] },
         { position: [0, 10.3, 87], size: [13, 3.4, 8], push: [3, 0, 0] },
+      ],
+      pendulumTraps: [
+        { position: [5, 10.0, 63], length: 3.2, speed: 1.45, phase: 0.7 },
       ],
     },
   },

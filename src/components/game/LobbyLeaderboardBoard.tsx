@@ -3,6 +3,7 @@ import { CuboidCollider, RigidBody } from '@react-three/rapier';
 import { useEffect, useState } from 'react';
 import {
   getLeaderboardStorageKey,
+  getLeaderboardEventName,
   loadLeaderboard,
   loadPlayerName,
   type LeaderboardEntry,
@@ -48,9 +49,11 @@ export const LobbyLeaderboardBoard = () => {
     };
 
     window.addEventListener('storage', handleStorage);
+    window.addEventListener(getLeaderboardEventName(), refreshLeaderboard);
     channel?.addEventListener('message', refreshLeaderboard);
     return () => {
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(getLeaderboardEventName(), refreshLeaderboard);
       channel?.removeEventListener('message', refreshLeaderboard);
       channel?.close();
     };

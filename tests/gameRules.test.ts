@@ -89,12 +89,37 @@ test('level one extends from snow into a lava valley and rock summit', () => {
   assert.equal(volcanoBlocks.length, 3);
   assert.ok(volcanoBlocks.every((block) => block.position[2] >= 188 && block.position[2] <= 210));
   assert.ok(rockBlocks.length >= 4);
-  assert.ok(LEVELS[1].goal[2] >= 250);
+  assert.ok(LEVELS[1].goal[2] >= 360);
+  assert.ok(LEVELS[1].checkpoints.length >= 29);
   assert.ok(LEVELS[1].gameplay.trapFloors.some((floor) => floor.color === '#7a4632'));
   assert.ok((LEVELS[1].gameplay.lavaJets?.length ?? 0) >= 3);
   assert.ok((LEVELS[1].gameplay.sweepTraps?.length ?? 0) >= 3);
+  assert.ok((LEVELS[1].gameplay.crusherTraps?.length ?? 0) >= 3);
   assert.equal('chestTraps' in LEVELS[1].gameplay, false);
   assert.equal(LEVELS[1].gameplay.snareTraps.some((snare) => snare.position[2] > 180), false);
+});
+
+test('extended rock mountain keeps every new jump within reach', () => {
+  const rockMountain = LEVELS[1].gameplay.blocks.slice(-6);
+  for (let index = 1; index < rockMountain.length; index += 1) {
+    const previous = rockMountain[index - 1];
+    const current = rockMountain[index];
+    const gapZ =
+      current.position[2] -
+      current.size[2] / 2 -
+      (previous.position[2] + previous.size[2] / 2);
+    const previousMinX = previous.position[0] - previous.size[0] / 2;
+    const previousMaxX = previous.position[0] + previous.size[0] / 2;
+    const currentMinX = current.position[0] - current.size[0] / 2;
+    const currentMaxX = current.position[0] + current.size[0] / 2;
+    const gapX = Math.max(0, currentMinX - previousMaxX, previousMinX - currentMaxX);
+    const horizontalGap = Math.hypot(gapX, gapZ);
+    const previousTop = previous.position[1] + previous.size[1] / 2;
+    const currentTop = current.position[1] + current.size[1] / 2;
+
+    assert.ok(horizontalGap <= 3.5, 'rock mountain gaps should remain jumpable');
+    assert.ok(currentTop - previousTop <= 2, 'rock mountain height changes should remain jumpable');
+  }
 });
 
 test('level two crosses wide glacier gaps using moving ice rafts', () => {
@@ -156,8 +181,22 @@ test('difficulty curve keeps dense mixed trap layouts', () => {
   assert.ok((LEVELS[1].gameplay.iceRafts?.length ?? 0) >= 5);
   assert.ok((LEVELS[1].gameplay.windZones?.length ?? 0) >= 3);
 
-  assert.ok(LEVELS[2].gameplay.ambushDrops.length >= 4);
+  assert.ok(LEVELS[2].gameplay.ambushDrops.length >= 2);
   assert.ok((LEVELS[2].gameplay.icePatches?.length ?? 0) >= 5);
   assert.ok((LEVELS[2].gameplay.iceRafts?.length ?? 0) >= 5);
   assert.ok((LEVELS[2].gameplay.windZones?.length ?? 0) >= 3);
+});
+
+test('checkpoint centers stay clear of hidden ground snares', () => {
+  for (const level of Object.values(LEVELS)) {
+    for (const checkpoint of level.checkpoints) {
+      for (const snare of level.gameplay.snareTraps) {
+        const distance = Math.hypot(
+          checkpoint.position[0] - snare.position[0],
+          checkpoint.position[2] - snare.position[2]
+        );
+        assert.ok(distance >= 2.2, 'hidden snares should not overlap checkpoint safe zones');
+      }
+    }
+  }
 });

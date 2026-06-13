@@ -3,10 +3,44 @@ import { applyGoalReached, applyHazardHit } from './gameRules';
 import { clearPlayerProgress, loadPlayerProgress, savePlayerProgress } from './playerProgress';
 
 export type Vec3 = { x: number; y: number; z: number };
+export type GraphicsQuality = 'performance' | 'balanced';
 
 const defaultCheckpoint: Vec3 = { x: 0, y: 1.05, z: 0 };
 const savedProgress = loadPlayerProgress();
 const initialProgress = savedProgress?.level === 1 ? savedProgress : null;
+const SETTINGS_KEY = 'mountain-climber-settings';
+const loadSettings = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) ?? 'null');
+    if (!parsed || typeof parsed !== 'object') return null;
+    const settings = parsed as Record<string, unknown>;
+    return {
+      cameraSensitivity:
+        typeof settings.cameraSensitivity === 'number'
+          ? Math.min(2.4, Math.max(0.35, settings.cameraSensitivity))
+          : 1.1,
+      soundVolume:
+        typeof settings.soundVolume === 'number'
+          ? Math.min(1, Math.max(0, settings.soundVolume))
+          : 0.65,
+      graphicsQuality:
+        settings.graphicsQuality === 'performance' ? 'performance' as const : 'balanced' as const,
+    };
+  } catch {
+    return null;
+  }
+};
+const savedSettings = loadSettings();
+const saveSettings = (settings: {
+  cameraSensitivity: number;
+  soundVolume: number;
+  graphicsQuality: GraphicsQuality;
+}) => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+};
 type GameState = {
   level: number;
   maxLevels: number;
@@ -14,6 +48,7 @@ type GameState = {
   runVersion: number;
   cameraSensitivity: number;
   soundVolume: number;
+  graphicsQuality: GraphicsQuality;
   transitionTime: number;
   respawnTime: number;
   soundEvent: string;
@@ -48,6 +83,7 @@ type GameState = {
   setTotalCheckpoints: (count: number) => void;
   setCameraSensitivity: (value: number) => void;
   setSoundVolume: (value: number) => void;
+  setGraphicsQuality: (value: GraphicsQuality) => void;
   addFall: () => void;
   hitHazard: () => void;
   setWin: () => void;
@@ -64,8 +100,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   maxLevels: 1,
   teleportVersion: 0,
   runVersion: 0,
-  cameraSensitivity: 1.1,
-  soundVolume: 0.65,
+  cameraSensitivity: savedSettings?.cameraSensitivity ?? 1.1,
+  soundVolume: savedSettings?.soundVolume ?? 0.65,
+  graphicsQuality: savedSettings?.graphicsQuality ?? 'balanced',
   transitionTime: 0,
   respawnTime: 0,
   soundEvent: '',
@@ -170,8 +207,33 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }),
   setTotalCheckpoints: (count) => set({ totalCheckpoints: count }),
-  setCameraSensitivity: (value) => set({ cameraSensitivity: value }),
-  setSoundVolume: (value) => set({ soundVolume: value }),
+  setCameraSensitivity: (cameraSensitivity) =>
+    set((state) => {
+      saveSettings({
+        cameraSensitivity,
+        soundVolume: state.soundVolume,
+        graphicsQuality: state.graphicsQuality,
+      });
+      return { cameraSensitivity };
+    }),
+  setSoundVolume: (soundVolume) =>
+    set((state) => {
+      saveSettings({
+        cameraSensitivity: state.cameraSensitivity,
+        soundVolume,
+        graphicsQuality: state.graphicsQuality,
+      });
+      return { soundVolume };
+    }),
+  setGraphicsQuality: (graphicsQuality) =>
+    set((state) => {
+      saveSettings({
+        cameraSensitivity: state.cameraSensitivity,
+        soundVolume: state.soundVolume,
+        graphicsQuality,
+      });
+      return { graphicsQuality };
+    }),
   addFall: () =>
     set((state) => {
       const falls = state.falls + 1;

@@ -12,12 +12,14 @@ import { MovingIceRaft } from './MovingIceRaft';
 import { WindZone } from './WindZone';
 import { InstructionBoard } from './InstructionBoard';
 import { LobbyLeaderboardBoard } from './LobbyLeaderboardBoard';
-import { Snowfall } from './Snowfall';
 import { LavaJetTrap } from './LavaJetTrap';
 import { SweepTrap } from './SweepTrap';
+import { PendulumTrap } from './PendulumTrap';
+import { StoneCrusherTrap } from './StoneCrusherTrap';
 
 const blocks = LEVELS[1].gameplay.blocks;
-const COLLIDER_EDGE_SKIN = 0.02;
+const TERRAIN_COLLIDER_EXTRA_DEPTH = 0.16;
+const TERRAIN_TOP_SKIN = 0.16;
 const SNOW_BLOCK_START = 10;
 const VOLCANO_BLOCK_START = 17;
 const ROCK_BLOCK_START = 20;
@@ -30,14 +32,6 @@ const trees = [
 
 const snowBlocks = LEVELS[2].gameplay.blocks;
 const snowGameplay = LEVELS[2].gameplay;
-
-const routeSnowTrees = [
-  [-39, 8.45, 86], [-17, 8.45, 87], [-36, 13.25, 129], [-20, 14.95, 145], [-23, 18.35, 177],
-] as const;
-
-const levelTwoSnowTrees = [
-  [-8, 1.45, 16], [8, 3.15, 31], [-8, 4.85, 47], [8, 6.55, 63], [-7, 8.25, 79], [5, 9.95, 95],
-] as const;
 
 
 type TerrainBlock = {
@@ -294,6 +288,48 @@ const VolcanoRouteDecor = () => {
   );
 };
 
+const RockMountainRouteDecor = () => {
+  const edgeSpires = [
+    [-11.4, 28.12, 318.8, 0.78],
+    [-1.1, 29.92, 330.6, 0.72],
+    [-10.5, 31.72, 342.7, 0.76],
+    [7.4, 33.52, 354.6, 0.7],
+    [-4.8, 35.32, 366.5, 0.88],
+    [4.9, 35.32, 365.7, 0.82],
+  ] as const;
+
+  return (
+    <group>
+      {edgeSpires.map(([x, y, z, scale], index) => (
+        <group key={`summit-spire-${index}`} position={[x, y, z]} scale={scale}>
+          <mesh position={[0, 0.68, 0]} rotation={[0.04, index * 0.7, index % 2 ? 0.1 : -0.08]} castShadow>
+            <coneGeometry args={[0.62, 1.4, 6]} />
+            <meshStandardMaterial color={index % 2 ? '#474641' : '#55524c'} roughness={1} />
+          </mesh>
+          <mesh position={[0.22, 0.18, 0.16]} rotation={[0.2, 0.4, 0.12]} castShadow>
+            <dodecahedronGeometry args={[0.3, 0]} />
+            <meshStandardMaterial color="#343532" roughness={1} />
+          </mesh>
+        </group>
+      ))}
+      <group position={[0, 35.46, 369.1]}>
+        <mesh position={[-1.5, 1.25, 0]} rotation={[0, 0, -0.08]} castShadow>
+          <cylinderGeometry args={[0.17, 0.24, 2.5, 7]} />
+          <meshStandardMaterial color="#4a4037" roughness={1} />
+        </mesh>
+        <mesh position={[1.5, 1.25, 0]} rotation={[0, 0, 0.08]} castShadow>
+          <cylinderGeometry args={[0.17, 0.24, 2.5, 7]} />
+          <meshStandardMaterial color="#4a4037" roughness={1} />
+        </mesh>
+        <mesh position={[0, 2.35, 0]} castShadow>
+          <boxGeometry args={[3.2, 0.28, 0.34]} />
+          <meshStandardMaterial color="#55483a" roughness={1} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
 const SnowCabin = ({ position = [-37.1, 8.35, 80.0] as const }: { position?: readonly [number, number, number] }) => (
   <RigidBody type="fixed" colliders={false} position={position} rotation={[0, 0.36, 0]}>
     <CuboidCollider args={[1.5, 1.05, 1.2]} position={[0, 0.98, 0]} />
@@ -356,7 +392,7 @@ const SnowCabin = ({ position = [-37.1, 8.35, 80.0] as const }: { position?: rea
   </RigidBody>
 );
 
-const SnowAFrameHouse = ({
+export const SnowAFrameHouse = ({
   position = [-18.9, 8.35, 80.2] as const,
   rotation = -0.42,
 }: {
@@ -410,7 +446,7 @@ const SnowAFrameHouse = ({
   </RigidBody>
 );
 
-const SnowSupplyShed = ({
+export const SnowSupplyShed = ({
   position = [-28.2, 8.35, 88.6] as const,
   rotation = 0.18,
 }: {
@@ -452,34 +488,26 @@ const SnowWoodPile = ({ position, rotation = 0 }: { position: readonly [number, 
   </RigidBody>
 );
 
-const SnowSideDecor = ({ position = [0, 0, 0] as const }: { position?: readonly [number, number, number] }) => {
+export const SnowSideDecor = ({ position = [0, 0, 0] as const }: { position?: readonly [number, number, number] }) => {
   const fenceSegments = [
-    [-39.6, 8.62, 77.2, 0.04, 4.2],
-    [-16.4, 8.62, 77.2, -0.04, 4.0],
-    [-39.0, 8.62, 88.4, 0.46, 3.6],
-    [-16.9, 8.62, 88.3, -0.46, 3.6],
+    [-39.4, 8.62, 77.5, 0.04, 4.0],
+    [-34.4, 8.62, 88.0, 0.46, 3.2],
+    [-25.2, 8.62, 88.0, -0.46, 3.2],
   ] as const;
   const lamps = [
-    [-34.0, 8.55, 78.6],
-    [-22.0, 8.55, 78.6],
-    [-34.0, 8.55, 87.0],
-    [-22.0, 8.55, 87.0],
+    [-33.2, 8.55, 78.8],
+    [-25.4, 8.55, 86.4],
   ] as const;
   const snowPines = [
-    [-40.4, 8.55, 80.0, 0.58],
-    [-16.0, 8.55, 80.0, 0.54],
-    [-38.5, 8.55, 88.8, 0.46],
-    [-17.8, 8.55, 88.8, 0.44],
-    [-31.6, 8.55, 76.0, 0.38],
-    [-24.4, 8.55, 76.0, 0.38],
+    [-40.2, 8.55, 84.0, 0.54],
+    [-20.8, 8.55, 87.6, 0.46],
+    [-30.2, 8.55, 76.2, 0.36],
   ] as const;
 
   return (
     <group position={position as [number, number, number]}>
       {[
-        [-37.1, 8.5, 80.0, 3.8, 2.65, 0.18],
-        [-18.9, 8.5, 80.2, 3.5, 2.45, -0.22],
-        [-28.2, 8.5, 88.6, 2.55, 1.9, 0.08],
+        [-37.1, 8.5, 80.0, 4.4, 3.2, 0.18],
       ].map(([x, y, z, sx, sz, rotation], index) => (
         <RigidBody key={`snow-house-pad-${index}`} type="fixed" colliders={false} position={[x, y, z]} rotation={[0, rotation, 0]}>
           <CuboidCollider args={[sx / 2, 0.04, sz / 2]} />
@@ -541,23 +569,11 @@ const SnowSideDecor = ({ position = [0, 0, 0] as const }: { position?: readonly 
         </group>
         </RigidBody>
       ))}
-      <RigidBody type="fixed" colliders={false} position={[-28, 8.56, 81.8]}>
-        <CuboidCollider args={[2.2, 0.18, 1.15]} position={[0, 0.18, 0]} />
-        <RoundedBox args={[4.4, 0.24, 2.3]} radius={0.28} smoothness={4} position={[0, 0.12, 0]} receiveShadow>
-          <meshStandardMaterial color="#dfeaec" roughness={0.98} />
-        </RoundedBox>
-        <mesh position={[0, 0.34, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.76, 1.12, 18]} />
-          <meshStandardMaterial color="#9fc0c6" roughness={1} side={2} />
-        </mesh>
-      </RigidBody>
       <SnowWoodPile position={[-36.8, 8.58, 78.8]} rotation={0.2} />
-      <SnowWoodPile position={[-19.2, 8.58, 78.8]} rotation={-0.2} />
       {[
         [-39.0, 8.53, 86.9, 0.5],
-        [-17.0, 8.53, 86.8, 0.46],
         [-34.2, 8.53, 76.8, 0.36],
-        [-21.7, 8.53, 76.8, 0.34],
+        [-22.0, 8.53, 87.2, 0.4],
       ].map(([x, y, z, scale], index) => (
         <RigidBody key={`snow-drift-${index}`} type="fixed" colliders={false} position={[x, y, z]} rotation={[0, index * 0.48, 0]}>
           <CuboidCollider args={[0.82 * scale, 0.12 * scale, 0.42 * scale]} position={[0.1 * scale, 0.08 * scale, 0]} />
@@ -584,46 +600,46 @@ export const MountainEnvironment = () => {
   if (level === 2) {
     return (
       <group>
-        <SnowSideDecor position={[28, 1.44, 0]} />
         <SnowCabin position={[-9.1, 9.79, 80.0]} />
-        <SnowAFrameHouse position={[9.1, 9.79, 80.2]} rotation={0.38} />
-        <SnowSupplyShed position={[0, 9.79, 88.6]} rotation={-0.12} />
-        <Snowfall />
         <RigidBody type="fixed" colliders={false}>
           {snowBlocks.map((block, index) => (
             <RockyTerrace key={`snow-block-${index}`} block={block} index={index} biome="snow" />
           ))}
           {snowBlocks.map((block, index) => (
-            <CuboidCollider
-              key={`snow-collider-${index}`}
-              args={[block.size[0] / 2 - COLLIDER_EDGE_SKIN, block.size[1] / 2, block.size[2] / 2 - COLLIDER_EDGE_SKIN]}
-              position={block.position as [number, number, number]}
-            />
+            <group key={`snow-collider-${index}`}>
+              <CuboidCollider
+                args={[
+                  block.size[0] / 2,
+                  block.size[1] / 2 + TERRAIN_COLLIDER_EXTRA_DEPTH,
+                  block.size[2] / 2,
+                ]}
+                position={[
+                  block.position[0],
+                  block.position[1] - TERRAIN_COLLIDER_EXTRA_DEPTH,
+                  block.position[2],
+                ]}
+              />
+              <CuboidCollider
+                args={[block.size[0] / 2, TERRAIN_TOP_SKIN, block.size[2] / 2]}
+                position={[
+                  block.position[0],
+                  block.position[1] + block.size[1] / 2 - TERRAIN_TOP_SKIN,
+                  block.position[2],
+                ]}
+                friction={0.9}
+              />
+            </group>
           ))}
         </RigidBody>
 
         {snowGameplay.icePatches.map((patch, index) => <IcePatch key={`ice-${index}`} {...patch} />)}
         {snowGameplay.iceRafts?.map((raft, index) => <MovingIceRaft key={`ice-raft-${index}`} {...raft} />)}
         {snowGameplay.windZones?.map((zone, index) => <WindZone key={`wind-zone-${index}`} {...zone} />)}
+        {snowGameplay.pendulumTraps?.map((trap, index) => (
+          <PendulumTrap key={`snow-pendulum-${index}`} {...trap} />
+        ))}
         {snowGameplay.ambushDrops.map((ambush, index) => (
           <AmbushDrop key={`ambush-${runVersion}-${index}`} {...ambush} showMarker={false} />
-        ))}
-        {levelTwoSnowTrees.map((tree, index) => (
-          <RigidBody key={`snow-tree-${index}`} type="fixed" colliders={false} position={tree}>
-            <CuboidCollider args={[0.15, 0.72, 0.15]} position={[0, 0.72, 0]} />
-            <mesh position={[0, 0.72, 0]} castShadow>
-              <cylinderGeometry args={[0.1, 0.15, 1.44, 7]} />
-              <meshStandardMaterial color="#55483c" roughness={1} />
-            </mesh>
-            <mesh position={[0, 1.55, 0]} castShadow>
-              <coneGeometry args={[0.8, 1.9, 8]} />
-              <meshStandardMaterial color="#426270" roughness={1} />
-            </mesh>
-            <mesh position={[0, 2.12, 0]} castShadow>
-              <coneGeometry args={[0.58, 1.35, 8]} />
-              <meshStandardMaterial color="#d9e9ec" roughness={1} />
-            </mesh>
-          </RigidBody>
         ))}
       </group>
     );
@@ -634,27 +650,42 @@ export const MountainEnvironment = () => {
       <MountainVillage />
       <InstructionBoard />
       <LobbyLeaderboardBoard />
-      <SnowSideDecor />
       <SnowCabin />
-      <SnowAFrameHouse />
-      <SnowSupplyShed />
-      <Snowfall />
       <VolcanoRouteDecor />
+      <RockMountainRouteDecor />
       <RigidBody type="fixed" colliders={false}>
         {blocks.map((block, index) => (
           <RockyTerrace key={`block-${index}`} block={block} index={index} biome={getRouteBiome(index)} />
         ))}
         {blocks.map((block, index) => (
-          <CuboidCollider
-            key={`block-collider-${index}`}
-            args={[block.size[0] / 2 - COLLIDER_EDGE_SKIN, block.size[1] / 2, block.size[2] / 2 - COLLIDER_EDGE_SKIN]}
-            position={block.position as [number, number, number]}
-          />
+          <group key={`block-collider-${index}`}>
+            <CuboidCollider
+              args={[
+                block.size[0] / 2,
+                block.size[1] / 2 + TERRAIN_COLLIDER_EXTRA_DEPTH,
+                block.size[2] / 2,
+              ]}
+              position={[
+                block.position[0],
+                block.position[1] - TERRAIN_COLLIDER_EXTRA_DEPTH,
+                block.position[2],
+              ]}
+            />
+            <CuboidCollider
+              args={[block.size[0] / 2, TERRAIN_TOP_SKIN, block.size[2] / 2]}
+              position={[
+                block.position[0],
+                block.position[1] + block.size[1] / 2 - TERRAIN_TOP_SKIN,
+                block.position[2],
+              ]}
+              friction={0.9}
+            />
+          </group>
         ))}
       </RigidBody>
 
-      {[...trees, ...routeSnowTrees].map((tree, index) => {
-        const snow = index >= trees.length;
+      {trees.map((tree, index) => {
+        const snow = false;
         return (
           <RigidBody key={`tree-${index}`} type="fixed" colliders={false} position={tree}>
             <CuboidCollider args={[0.16, 0.8, 0.16]} position={[0, 0.8, 0]} />
@@ -680,6 +711,12 @@ export const MountainEnvironment = () => {
       {gameplay.windZones?.map((zone, index) => <WindZone key={`wind-zone-${index}`} {...zone} />)}
       {gameplay.lavaJets?.map((jet, index) => <LavaJetTrap key={`lava-jet-${index}`} {...jet} />)}
       {gameplay.sweepTraps?.map((trap, index) => <SweepTrap key={`sweep-trap-${index}`} {...trap} />)}
+      {gameplay.pendulumTraps?.map((trap, index) => (
+        <PendulumTrap key={`pendulum-trap-${index}`} {...trap} />
+      ))}
+      {gameplay.crusherTraps?.map((trap, index) => (
+        <StoneCrusherTrap key={`crusher-trap-${index}`} {...trap} />
+      ))}
       {gameplay.ambushDrops.map((ambush, index) => (
         <AmbushDrop
           key={`ambush-${runVersion}-${index}`}

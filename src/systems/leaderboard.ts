@@ -9,6 +9,7 @@ export type LeaderboardEntry = {
 const STORAGE_KEY = 'mountain-climber-leaderboard';
 const PLAYER_NAME_KEY = 'mountain-climber-player-name';
 const MAX_ENTRIES = 10;
+const LEADERBOARD_EVENT = 'mountain-climber-leaderboard-updated';
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -63,6 +64,21 @@ export const loadLeaderboard = (): LeaderboardEntry[] => {
 const saveLeaderboard = (entries: LeaderboardEntry[]) => {
   if (!isBrowser) return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sortLeaderboard(entries)));
+  window.dispatchEvent(new Event(LEADERBOARD_EVENT));
+};
+
+export const mergeLeaderboardEntries = (incoming: unknown) => {
+  if (!Array.isArray(incoming)) return loadLeaderboard();
+  const combined = [...loadLeaderboard(), ...incoming.filter(isEntry)];
+  const bestByName = new Map<string, LeaderboardEntry>();
+  combined.forEach((entry) => {
+    const key = normalizeName(entry.name).toLowerCase();
+    const current = bestByName.get(key);
+    if (!current || compareScores(entry, current) < 0) bestByName.set(key, entry);
+  });
+  const merged = sortLeaderboard([...bestByName.values()]);
+  saveLeaderboard(merged);
+  return merged;
 };
 
 export const recordLeaderboardScore = ({
@@ -98,3 +114,4 @@ export const recordLeaderboardScore = ({
 };
 
 export const getLeaderboardStorageKey = () => STORAGE_KEY;
+export const getLeaderboardEventName = () => LEADERBOARD_EVENT;

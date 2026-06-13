@@ -2,6 +2,11 @@ import Peer, { type DataConnection } from 'peerjs';
 import type { AnimState } from '../components/game/Player';
 import { useGameStore } from './gameStore';
 import { useMultiplayerStore, type MultiplayerMode } from './multiplayerStore';
+import {
+  loadLeaderboard,
+  mergeLeaderboardEntries,
+  type LeaderboardEntry,
+} from './leaderboard';
 
 type RoomMessage =
   | { type: 'hello'; name: string }
@@ -16,7 +21,8 @@ type RoomMessage =
       finished: boolean;
     }
   | { type: 'fall' }
-  | { type: 'finish'; name: string };
+  | { type: 'finish'; name: string }
+  | { type: 'leaderboard'; entries: LeaderboardEntry[] };
 
 let peer: Peer | null = null;
 let connection: DataConnection | null = null;
@@ -53,11 +59,13 @@ const handleMessage = (message: unknown) => {
     send({ type: 'room', mode: hostedMode, name: localName });
     multiplayer.setRoomState({ status: 'connected', error: '' });
     useGameStore.getState().restart();
+    send({ type: 'leaderboard', entries: loadLeaderboard() });
   }
   if (data.type === 'room') {
     multiplayer.setRemote({ name: data.name });
     multiplayer.setRoomState({ mode: data.mode, status: 'connected', error: '' });
     useGameStore.getState().restart();
+    send({ type: 'leaderboard', entries: loadLeaderboard() });
   }
   if (data.type === 'state') {
     multiplayer.setRemote({
@@ -71,6 +79,7 @@ const handleMessage = (message: unknown) => {
   }
   if (data.type === 'fall' && multiplayer.mode === 'tether') multiplayer.triggerTetherFall();
   if (data.type === 'finish') multiplayer.setRemoteWinner(data.name);
+  if (data.type === 'leaderboard') mergeLeaderboardEntries(data.entries);
 };
 
 const bindConnection = (nextConnection: DataConnection, isHost: boolean) => {
@@ -177,3 +186,4 @@ export const publishPlayerState = (state: {
 
 export const notifyMultiplayerFall = () => send({ type: 'fall' });
 export const notifyMultiplayerFinish = () => send({ type: 'finish', name: localName });
+export const publishLeaderboard = () => send({ type: 'leaderboard', entries: loadLeaderboard() });

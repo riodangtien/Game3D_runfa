@@ -39,7 +39,11 @@ export const MovingIceRaft = ({ position, size, axis, distance, speed }: MovingI
 
   return (
     <RigidBody ref={bodyRef} type="kinematicPosition" colliders={false} position={position}>
-      <CuboidCollider args={[size[0] / 2, size[1] / 2, size[2] / 2]} friction={1.2} />
+      <CuboidCollider
+        args={[size[0] / 2, size[1] / 2 + 0.14, size[2] / 2]}
+        position={[0, -0.14, 0]}
+        friction={1.2}
+      />
       <CuboidCollider
         args={[size[0] / 2 - 0.08, 0.22, size[2] / 2 - 0.08]}
         position={[0, size[1] / 2 + 0.18, 0]}

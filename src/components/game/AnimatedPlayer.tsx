@@ -6,6 +6,7 @@ import type { AnimState } from './Player';
 
 type AnimatedPlayerProps = {
   state: AnimState;
+  castShadow?: boolean;
 };
 
 const playerModelUrl = `${import.meta.env.BASE_URL}models/RobotExpressive.glb`;
@@ -22,7 +23,7 @@ const clipByState: Record<AnimState, string> = {
   hit: 'Death',
 };
 
-export const AnimatedPlayer = forwardRef<THREE.Group, AnimatedPlayerProps>(({ state }, ref) => {
+export const AnimatedPlayer = forwardRef<THREE.Group, AnimatedPlayerProps>(({ state, castShadow = true }, ref) => {
   const { scene, animations } = useGLTF(playerModelUrl);
   const instance = useMemo(() => clone(scene), [scene]);
   const { actions } = useAnimations(animations, instance);
@@ -30,11 +31,11 @@ export const AnimatedPlayer = forwardRef<THREE.Group, AnimatedPlayerProps>(({ st
   useEffect(() => {
     instance.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = castShadow;
+        child.receiveShadow = castShadow;
       }
     });
-  }, [instance]);
+  }, [castShadow, instance]);
 
   useEffect(() => {
     const action = actions[clipByState[state]];
@@ -48,7 +49,7 @@ export const AnimatedPlayer = forwardRef<THREE.Group, AnimatedPlayerProps>(({ st
   }, [actions, state]);
 
   return (
-    <group ref={ref} position={[0, -0.92, 0]} rotation={[0, Math.PI, 0]} scale={0.3}>
+    <group ref={ref} position={[0, -0.72, 0]} rotation={[0, Math.PI, 0]} scale={0.3}>
       <primitive object={instance} />
     </group>
   );

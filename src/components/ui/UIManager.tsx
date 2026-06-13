@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../systems/gameStore';
 import {
   getLeaderboardStorageKey,
+  getLeaderboardEventName,
   loadLeaderboard,
   loadPlayerName,
   recordLeaderboardScore,
@@ -11,12 +12,21 @@ import {
 import { LEVELS } from '../../data/levels';
 import { useMultiplayerStore } from '../../systems/multiplayerStore';
 import { MultiplayerPanel } from './MultiplayerPanel';
+import { publishLeaderboard } from '../../systems/multiplayerNetwork';
 
 const formatTime = (time: number) => {
   const minutes = Math.floor(time / 60);
   const seconds = Math.floor(time % 60);
   const paddedSeconds = seconds < 10 ? `0${seconds}` : `${seconds}`;
   return `${minutes}:${paddedSeconds}`;
+};
+
+const getJourneyStage = (checkpoint: number) => {
+  if (checkpoint >= 25) return 'Đỉnh núi đá';
+  if (checkpoint >= 17) return 'Thung lũng núi lửa';
+  if (checkpoint >= 8) return 'Sống núi tuyết';
+  if (checkpoint >= 1) return 'Đường rừng';
+  return 'Làng khởi hành';
 };
 
 const Leaderboard = ({
@@ -30,8 +40,8 @@ const Leaderboard = ({
 }) => (
   <div className={compact ? 'leaderboard compact' : 'leaderboard'}>
     <div className="leaderboard-titlebar">
-      <span>Summit Records</span>
-      <small>Fastest explorers</small>
+      <span>Kỷ lục chinh phục</span>
+      <small>Người leo nhanh nhất</small>
     </div>
     <div className="leaderboard-head">
       <span>Hạng</span>
@@ -40,7 +50,7 @@ const Leaderboard = ({
       <span>Ngã</span>
     </div>
     {entries.length === 0 ? (
-      <div className="leaderboard-empty">No records yet. Be the first climber.</div>
+      <div className="leaderboard-empty">Chưa có kỷ lục. Hãy trở thành người đầu tiên.</div>
     ) : (
       entries.map((entry, index) => (
         <div className={entry.name === currentName ? 'leaderboard-row current' : 'leaderboard-row'} key={entry.id}>
@@ -65,6 +75,7 @@ export const UIManager = () => {
   const transitionTime = useGameStore((state) => state.transitionTime);
   const cameraSensitivity = useGameStore((state) => state.cameraSensitivity);
   const soundVolume = useGameStore((state) => state.soundVolume);
+  const graphicsQuality = useGameStore((state) => state.graphicsQuality);
   const checkpointsHit = useGameStore((state) => state.checkpointsHit);
   const totalCheckpoints = useGameStore((state) => state.totalCheckpoints);
   const falls = useGameStore((state) => state.falls);
@@ -73,10 +84,12 @@ export const UIManager = () => {
   const instructionOpen = useGameStore((state) => state.instructionOpen);
   const start = useGameStore((state) => state.start);
   const restart = useGameStore((state) => state.restart);
+  const reset = useGameStore((state) => state.reset);
   const setPaused = useGameStore((state) => state.setPaused);
   const setInstructionOpen = useGameStore((state) => state.setInstructionOpen);
   const setCameraSensitivity = useGameStore((state) => state.setCameraSensitivity);
   const setSoundVolume = useGameStore((state) => state.setSoundVolume);
+  const setGraphicsQuality = useGameStore((state) => state.setGraphicsQuality);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const multiplayerOpen = useMultiplayerStore((state) => state.dialogOpen);
   const multiplayerStatus = useMultiplayerStore((state) => state.status);
@@ -87,19 +100,46 @@ export const UIManager = () => {
   const [leaderboard, setLeaderboard] = useState(() => loadLeaderboard());
   const [latestRecord, setLatestRecord] = useState<{ entry: LeaderboardEntry; isNewRecord: boolean } | null>(null);
   const savedWinKey = useRef('');
+  const previousCheckpoint = useRef(checkpointsHit);
+  const [checkpointNotice, setCheckpointNotice] = useState('');
 
   const staminaPercent = useMemo(() => (stamina / maxStamina) * 100, [stamina, maxStamina]);
   const displayedTotalCheckpoints =
     totalCheckpoints || LEVELS[level as keyof typeof LEVELS].checkpoints.length;
   const displayedCheckpointsHit = Math.min(checkpointsHit, displayedTotalCheckpoints);
+  const journeyProgress = displayedTotalCheckpoints > 0
+    ? Math.round((displayedCheckpointsHit / displayedTotalCheckpoints) * 100)
+    : 0;
+  const journeyStage = getJourneyStage(displayedCheckpointsHit);
 
-  const beginGame = () => {
+  const saveCurrentName = () => {
     const savedName = savePlayerName(playerName);
     setPlayerName(savedName);
     setLatestRecord(null);
     savedWinKey.current = '';
+  };
+
+  const continueGame = () => {
+    saveCurrentName();
     start();
   };
+
+  const beginNewGame = () => {
+    saveCurrentName();
+    reset();
+    window.setTimeout(() => useGameStore.getState().start(), 0);
+  };
+
+  useEffect(() => {
+    if (!started || checkpointsHit <= previousCheckpoint.current) {
+      previousCheckpoint.current = checkpointsHit;
+      return;
+    }
+    previousCheckpoint.current = checkpointsHit;
+    setCheckpointNotice(`Checkpoint ${checkpointsHit}/${displayedTotalCheckpoints} · ${getJourneyStage(checkpointsHit)}`);
+    const timer = window.setTimeout(() => setCheckpointNotice(''), 2200);
+    return () => window.clearTimeout(timer);
+  }, [checkpointsHit, displayedTotalCheckpoints, started]);
 
   useEffect(() => {
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('mountain-climber-leaderboard') : null;
@@ -109,9 +149,11 @@ export const UIManager = () => {
     };
 
     window.addEventListener('storage', handleStorage);
+    window.addEventListener(getLeaderboardEventName(), refreshLeaderboard);
     channel?.addEventListener('message', refreshLeaderboard);
     return () => {
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(getLeaderboardEventName(), refreshLeaderboard);
       channel?.removeEventListener('message', refreshLeaderboard);
       channel?.close();
     };
@@ -126,6 +168,7 @@ export const UIManager = () => {
       const result = recordLeaderboardScore({ name: playerName, time, falls });
       setLatestRecord({ entry: result.entry, isNewRecord: result.isNewRecord });
       setLeaderboard(result.leaderboard);
+      publishLeaderboard();
       if (typeof BroadcastChannel !== 'undefined') {
         const channel = new BroadcastChannel('mountain-climber-leaderboard');
         channel.postMessage({ type: 'leaderboard-updated' });
@@ -156,38 +199,48 @@ export const UIManager = () => {
     <div className={multiplayerOpen ? 'hud modal-open' : 'hud'}>
       <div className="hud-top">
         <div className="panel">
-          <div className="label">Level</div>
+          <div className="label">Màn chơi</div>
           <div className="value">
             {level}/{maxLevels}
           </div>
         </div>
         <div className="panel">
-          <div className="label">Time</div>
+          <div className="label">Thời gian</div>
           <div className="value">{formatTime(time)}</div>
         </div>
         <div className="panel">
-          <div className="label">Checkpoints</div>
+          <div className="label">Checkpoint</div>
           <div className="value">
             {displayedCheckpointsHit}/{displayedTotalCheckpoints}
           </div>
         </div>
         <div className="panel">
-          <div className="label">Falls</div>
+          <div className="label">Số lần ngã</div>
           <div className="value">{falls}</div>
+        </div>
+        <div className="panel journey-panel">
+          <div className="label">Khu vực</div>
+          <div className="journey-value">
+            <strong>{journeyStage}</strong>
+            <span>{journeyProgress}%</span>
+          </div>
+          <div className="journey-track">
+            <span style={{ width: `${journeyProgress}%` }} />
+          </div>
         </div>
       </div>
 
       <div className="hud-bottom">
         <div className="panel stamina">
-          <div className="label">Stamina</div>
+          <div className="label">Thể lực</div>
           <div className="bar">
             <div className="fill" style={{ width: `${staminaPercent}%` }} />
           </div>
-          {exhaustedTime > 0 && <div className="hint">Exhausted</div>}
+          {exhaustedTime > 0 && <div className="hint">Đang kiệt sức</div>}
         </div>
         <div className="actions">
           <button className="btn ghost" type="button" onClick={restart}>
-            Restart
+            Chơi lại
           </button>
         </div>
       </div>
@@ -199,13 +252,13 @@ export const UIManager = () => {
           type="button"
           onClick={() => setSettingsOpen((open) => !open)}
         >
-          Settings
+          Cài đặt
         </button>
         {settingsOpen && (
           <div aria-label="Game settings" className="settings-panel" role="dialog">
-            <div className="settings-title">Game Settings</div>
+            <div className="settings-title">Cài đặt game</div>
             <label className="settings-control" htmlFor="camera-sensitivity">
-              <span>Mouse look speed <output>{cameraSensitivity.toFixed(2)}</output></span>
+              <span>Tốc độ xoay chuột <output>{cameraSensitivity.toFixed(2)}</output></span>
               <input
                 id="camera-sensitivity"
                 min="0.35"
@@ -217,7 +270,7 @@ export const UIManager = () => {
               />
             </label>
             <label className="settings-control" htmlFor="sound-volume">
-              <span>Sound volume <output>{Math.round(soundVolume * 100)}%</output></span>
+              <span>Âm lượng <output>{Math.round(soundVolume * 100)}%</output></span>
               <input
                 id="sound-volume"
                 min="0"
@@ -228,15 +281,36 @@ export const UIManager = () => {
                 onChange={(event) => setSoundVolume(Number(event.target.value))}
               />
             </label>
+            <div className="settings-control">
+              <span>Chất lượng hình ảnh</span>
+              <div className="quality-options">
+                <button
+                  className={graphicsQuality === 'performance' ? 'quality-option active' : 'quality-option'}
+                  type="button"
+                  onClick={() => setGraphicsQuality('performance')}
+                >
+                  Mượt
+                  <small>Ưu tiên FPS</small>
+                </button>
+                <button
+                  className={graphicsQuality === 'balanced' ? 'quality-option active' : 'quality-option'}
+                  type="button"
+                  onClick={() => setGraphicsQuality('balanced')}
+                >
+                  Đẹp
+                  <small>Có bóng đổ</small>
+                </button>
+              </div>
+            </div>
             <div className="settings-help">
-              {started ? 'Game paused while settings are open. ' : ''}
-              Click the game to capture the mouse again. Use the wheel to zoom.
+              {started ? 'Game đang tạm dừng khi mở cài đặt. ' : ''}
+              Bấm vào game để điều khiển chuột trở lại. Dùng con lăn để phóng to, thu nhỏ.
             </div>
           </div>
         )}
       </div>
 
-      {started && <div className="mouse-hint">Click the game, then move the mouse to look around</div>}
+      {started && <div className="mouse-hint">Bấm vào game, sau đó di chuột để nhìn xung quanh</div>}
       {multiplayerStatus === 'connected' && (
         <div className="multiplayer-status">
           <span className="connection-dot" />
@@ -247,6 +321,7 @@ export const UIManager = () => {
       {remoteWinner && !win && (
         <div className="remote-winner">{remoteWinner} đã tới đích trước!</div>
       )}
+      {checkpointNotice && <div className="checkpoint-notice">{checkpointNotice}</div>}
       <MultiplayerPanel />
 
       {instructionOpen && (
@@ -272,15 +347,15 @@ export const UIManager = () => {
       {!started && !win && !lose && (
         <div className="tutorial">
           <div className="tutorial-card">
-            <div className="tutorial-kicker">Low-poly Adventure</div>
+            <div className="tutorial-kicker">Phiêu lưu low-poly</div>
             <div className="title">Mountain Climber</div>
-            <div className="subtitle">Reach the summit. A wooden guide board is waiting near the village entrance.</div>
+            <div className="subtitle">Vượt qua các vùng địa hình và chinh phục đỉnh núi.</div>
             <label className="player-name" htmlFor="player-name">
-              <span>Climber name</span>
+              <span>Tên người chơi</span>
               <input
                 id="player-name"
                 maxLength={18}
-                placeholder="Enter your name"
+                placeholder="Nhập tên của bạn"
                 type="text"
                 value={playerName}
                 onChange={(event) => setPlayerName(event.target.value)}
@@ -288,11 +363,39 @@ export const UIManager = () => {
             </label>
             {checkpointsHit > 0 && (
               <div className="resume-note">
-                Saved checkpoint {displayedCheckpointsHit}/{displayedTotalCheckpoints}. Start Climbing will continue from there.
+                Đã lưu checkpoint {displayedCheckpointsHit}/{displayedTotalCheckpoints}. Bạn có thể tiếp tục từ vị trí này.
               </div>
             )}
+            <div className="launch-quality">
+              <span>Chất lượng hình ảnh</span>
+              <div className="quality-options">
+                <button
+                  className={graphicsQuality === 'performance' ? 'quality-option active' : 'quality-option'}
+                  type="button"
+                  onClick={() => setGraphicsQuality('performance')}
+                >
+                  Mượt
+                  <small>Ưu tiên FPS</small>
+                </button>
+                <button
+                  className={graphicsQuality === 'balanced' ? 'quality-option active' : 'quality-option'}
+                  type="button"
+                  onClick={() => setGraphicsQuality('balanced')}
+                >
+                  Đẹp
+                  <small>Có bóng đổ</small>
+                </button>
+              </div>
+            </div>
             <Leaderboard entries={leaderboard.slice(0, 5)} currentName={playerName} compact />
-            <button className="btn" type="button" onClick={beginGame}>Start Climbing</button>
+            <div className="start-actions">
+              {checkpointsHit > 0 && (
+                <button className="btn" type="button" onClick={continueGame}>Tiếp tục hành trình</button>
+              )}
+              <button className={checkpointsHit > 0 ? 'btn ghost' : 'btn'} type="button" onClick={beginNewGame}>
+                {checkpointsHit > 0 ? 'Chơi mới từ đầu' : 'Bắt đầu leo núi'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -307,20 +410,20 @@ export const UIManager = () => {
       {win && (
         <div className="overlay">
           <div className="overlay-card">
-            <div className="title">Summit Reached</div>
-            <div className="subtitle">Your climb was a success.</div>
+            <div className="title">Đã chinh phục đỉnh núi</div>
+            <div className="subtitle">Hành trình của bạn đã hoàn thành.</div>
             <div className="tutorial-grid">
-              <span><b>Time</b> {formatTime(time)}</span>
-              <span><b>Deaths</b> {falls}</span>
+              <span><b>Thời gian</b> {formatTime(time)}</span>
+              <span><b>Số lần ngã</b> {falls}</span>
             </div>
             {latestRecord && (
               <div className={latestRecord.isNewRecord ? 'record-note new' : 'record-note'}>
-                {latestRecord.isNewRecord ? 'New record saved!' : `Best record kept: ${formatTime(latestRecord.entry.time)} / ${latestRecord.entry.falls} falls`}
+                {latestRecord.isNewRecord ? 'Đã lưu kỷ lục mới!' : `Kỷ lục tốt nhất: ${formatTime(latestRecord.entry.time)} / ${latestRecord.entry.falls} lần ngã`}
               </div>
             )}
             <Leaderboard entries={leaderboard} currentName={playerName} compact />
             <button className="btn" type="button" onClick={restart}>
-              Play Again
+              Chơi lại
             </button>
           </div>
         </div>
